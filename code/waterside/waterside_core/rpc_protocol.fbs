@@ -1,0 +1,36 @@
+namespace waterside;
+
+enum MESSAGE_PACKET_TYPE : ubyte
+{
+	PING,
+	RPC_REQUEST,
+	RPC_RESPONSE,
+}
+
+enum SERIALIZATION_TYPE : ubyte
+{
+	NO,
+	STRUCT_PACK,
+	FLAT_BUFFERS,
+}
+
+struct RpcPacketHeader
+{
+	/// message packet type
+	packet_type : MESSAGE_PACKET_TYPE;
+	/// serialization type
+	serialize_type : SERIALIZATION_TYPE;
+	/// length of RPC body
+	length : ushort;
+	/// sequence number
+	seq_num : uint;
+	/// rpc function ID
+	function_id : uint;
+}
+
+table RpcPacketConnectReply
+{
+	address : string (required);
+	port : uint;
+	conv : uint;
+}
