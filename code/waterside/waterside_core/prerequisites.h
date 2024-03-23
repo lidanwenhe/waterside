@@ -1,5 +1,20 @@
 #pragma once
 
+#include "flatbuffers/idl.h"
+#include "flatbuffers/util.h"
+
+#include <boost/asio.hpp>
+#include "boost/noncopyable.hpp"
+#include <boost/stacktrace.hpp>
+#include <boost/exception/all.hpp>
+
+#ifdef _MSC_VER
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#undef min
+#undef max
+#endif
+
 #include <cassert>
 
 #include <string>
@@ -122,6 +137,14 @@ namespace waterside
 	using istring_set = unordered_set<string, case_insensitive_string_hash, case_insensitive_string_equal_to>;
 
 
+	typedef boost::error_info<struct tag_stacktrace, boost::stacktrace::stacktrace> traced;
+
+	template <class E>
+	void throw_with_trace(const E& e)
+	{
+		throw boost::enable_error_info(e) << traced(boost::stacktrace::stacktrace());
+	}
+
 	typedef int64_t unique_id;
 	typedef uint32_t SessionID;
 
@@ -142,4 +165,34 @@ namespace waterside
 			return msInstance;
 		}
 	};
+
+	template <typename T>
+	class TSingleton
+	{
+		TSingleton(const TSingleton&) = delete;
+		const TSingleton& operator =(const TSingleton&) = delete;
+	public:
+		TSingleton()
+		{
+			assert(!msInstance);
+			msInstance = static_cast<T*>(this);
+		}
+
+		~TSingleton()
+		{
+			assert(msInstance);
+			msInstance = nullptr;
+		}
+
+		// 得到唯一实例
+		inline static T* instance()
+		{
+			return msInstance;
+		}
+
+	protected:
+		static T* msInstance;
+	};
+
+	template<typename T> T* TSingleton<T>::msInstance = nullptr;
 }

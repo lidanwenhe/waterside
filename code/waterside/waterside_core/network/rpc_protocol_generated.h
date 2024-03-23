@@ -22,33 +22,39 @@ struct RpcPacketConnectReplyBuilder;
 
 enum MESSAGE_PACKET_TYPE : uint8_t {
   MESSAGE_PACKET_TYPE_PING = 0,
-  MESSAGE_PACKET_TYPE_RPC_REQUEST = 1,
-  MESSAGE_PACKET_TYPE_RPC_RESPONSE = 2,
+  MESSAGE_PACKET_TYPE_DISCONNECT = 1,
+  MESSAGE_PACKET_TYPE_RPC_REQUEST = 2,
+  MESSAGE_PACKET_TYPE_RPC_RESPONSE = 3,
+  MESSAGE_PACKET_TYPE_MYSQL = 4,
   MESSAGE_PACKET_TYPE_MIN = MESSAGE_PACKET_TYPE_PING,
-  MESSAGE_PACKET_TYPE_MAX = MESSAGE_PACKET_TYPE_RPC_RESPONSE
+  MESSAGE_PACKET_TYPE_MAX = MESSAGE_PACKET_TYPE_MYSQL
 };
 
-inline const MESSAGE_PACKET_TYPE (&EnumValuesMESSAGE_PACKET_TYPE())[3] {
+inline const MESSAGE_PACKET_TYPE (&EnumValuesMESSAGE_PACKET_TYPE())[5] {
   static const MESSAGE_PACKET_TYPE values[] = {
     MESSAGE_PACKET_TYPE_PING,
+    MESSAGE_PACKET_TYPE_DISCONNECT,
     MESSAGE_PACKET_TYPE_RPC_REQUEST,
-    MESSAGE_PACKET_TYPE_RPC_RESPONSE
+    MESSAGE_PACKET_TYPE_RPC_RESPONSE,
+    MESSAGE_PACKET_TYPE_MYSQL
   };
   return values;
 }
 
 inline const char * const *EnumNamesMESSAGE_PACKET_TYPE() {
-  static const char * const names[4] = {
+  static const char * const names[6] = {
     "PING",
+    "DISCONNECT",
     "RPC_REQUEST",
     "RPC_RESPONSE",
+    "MYSQL",
     nullptr
   };
   return names;
 }
 
 inline const char *EnumNameMESSAGE_PACKET_TYPE(MESSAGE_PACKET_TYPE e) {
-  if (::flatbuffers::IsOutRange(e, MESSAGE_PACKET_TYPE_PING, MESSAGE_PACKET_TYPE_RPC_RESPONSE)) return "";
+  if (::flatbuffers::IsOutRange(e, MESSAGE_PACKET_TYPE_PING, MESSAGE_PACKET_TYPE_MYSQL)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesMESSAGE_PACKET_TYPE()[index];
 }

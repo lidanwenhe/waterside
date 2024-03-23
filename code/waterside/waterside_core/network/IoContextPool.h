@@ -1,16 +1,17 @@
 #pragma once
 
 #include "prerequisites.h"
-#include "asio.hpp"
 #include "async_simple/Executor.h"
 #include "async_simple/coro/Lazy.h"
+#include "ylt/util/type_traits.h"
+#include "ylt/util/utils.hpp"
 
 namespace waterside
 {
     class AsioExecutor : public async_simple::Executor
     {
     public:
-        AsioExecutor(asio::io_context& ioContext);
+        AsioExecutor(boost::asio::io_context& ioContext);
 
         virtual bool schedule(Func func) override;
 
@@ -21,10 +22,10 @@ namespace waterside
         virtual Context checkout() override { return &mIoContext; }
         virtual bool checkin(Func func, Context ctx) override;
 
-        asio::io_context& getIoContext() { return mIoContext; }
+        boost::asio::io_context& getIoContext() { return mIoContext; }
 
     private:
-        asio::io_context& mIoContext;
+        boost::asio::io_context& mIoContext;
     };
 
 	class IoContextPool
@@ -36,15 +37,29 @@ namespace waterside
 
         void stop();
 
-        size_t currentIoContext() { return mNextIoContext - 1; }
+        volatile bool isStopped() const
+        {
+            return mbStopped;
+        }
+        std::size_t getPoolSize() const
+        {
+            return mPoolSize;
+        }
+        size_t currentIoContext()
+        {
+            return mNextIoContext - 1;
+        }
 
-        asio::io_context& getIoContext();
+        boost::asio::io_context& getIoContext();
 
         AsioExecutor* getExecutor();
 
     private:
-        using io_context_ptr = std::shared_ptr<asio::io_context>;
-        using work_ptr = std::shared_ptr<asio::io_context::work>;
+        using io_context_ptr = std::shared_ptr<boost::asio::io_context>;
+        using work_ptr = std::shared_ptr<boost::asio::io_context::work>;
+
+        volatile bool mbStopped;
+        std::size_t mPoolSize;
 
         vector<io_context_ptr> mIoContexts;
         vector<std::unique_ptr<AsioExecutor>> mExecutors;
@@ -81,9 +96,36 @@ namespace waterside
         T mResult;
     };
 
-    inline async_simple::coro::Lazy<std::error_code> async_accept(
-        asio::ip::tcp::acceptor& acceptor, asio::ip::tcp::socket& socket) noexcept {
-        co_return co_await AsioCallbackAwaiter<std::error_code>{
+    template <typename T>
+    struct get_type_t
+    {
+        using type = T;
+    };
+
+    template <typename T>
+    struct get_type_t<async_simple::coro::Lazy<T>>
+    {
+        using type = T;
+    };
+
+    template <auto func>
+    constexpr auto getReturnType()
+    {
+        using Function = decltype(func);
+        using return_type = typename get_type_t<coro_rpc::function_return_type_t<Function>>::type;
+        if constexpr (std::is_void_v<return_type>)
+        {
+            return nullptr;
+        }
+        else
+        {
+            return return_type{};
+        }
+    }
+
+    inline async_simple::coro::Lazy<boost::system::error_code> async_accept(
+        boost::asio::ip::tcp::acceptor& acceptor, boost::asio::ip::tcp::socket& socket) noexcept {
+        co_return co_await AsioCallbackAwaiter<boost::system::error_code>{
             [&](std::coroutine_handle<> handle, auto set_resume_value) {
                 acceptor.async_accept(
                     socket, [handle, set_resume_value = std::move(
@@ -95,9 +137,9 @@ namespace waterside
     }
 
     template <typename Socket, typename AsioBuffer>
-    inline async_simple::coro::Lazy<std::pair<std::error_code, size_t>>
+    inline async_simple::coro::Lazy<std::pair<boost::system::error_code, size_t>>
         async_read_some(Socket& socket, AsioBuffer&& buffer) noexcept {
-        co_return co_await AsioCallbackAwaiter<std::pair<std::error_code, size_t>>{
+        co_return co_await AsioCallbackAwaiter<std::pair<boost::system::error_code, size_t>>{
             [&](std::coroutine_handle<> handle, auto set_resume_value) mutable {
                 socket.async_read_some(
                     std::move(buffer),
@@ -110,11 +152,11 @@ namespace waterside
     }
 
     template <typename Socket, typename AsioBuffer>
-    inline async_simple::coro::Lazy<std::pair<std::error_code, size_t>> async_read(
+    inline async_simple::coro::Lazy<std::pair<boost::system::error_code, size_t>> async_read(
         Socket& socket, AsioBuffer& buffer) noexcept {
-        co_return co_await AsioCallbackAwaiter<std::pair<std::error_code, size_t>>{
+        co_return co_await AsioCallbackAwaiter<std::pair<boost::system::error_code, size_t>>{
             [&](std::coroutine_handle<> handle, auto set_resume_value) mutable {
-                asio::async_read(
+                boost::asio::async_read(
                     socket, buffer,
                     [handle, set_resume_value = std::move(set_resume_value)](
                         auto ec, auto size) mutable {
@@ -125,12 +167,12 @@ namespace waterside
     }
 
     template <typename Socket, typename AsioBuffer>
-    inline async_simple::coro::Lazy<std::pair<std::error_code, size_t>>
+    inline async_simple::coro::Lazy<std::pair<boost::system::error_code, size_t>>
         async_read_until(Socket& socket, AsioBuffer& buffer,
-            asio::string_view delim) noexcept {
-        co_return co_await AsioCallbackAwaiter<std::pair<std::error_code, size_t>>{
+            boost::asio::string_view delim) noexcept {
+        co_return co_await AsioCallbackAwaiter<std::pair<boost::system::error_code, size_t>>{
             [&](std::coroutine_handle<> handle, auto set_resume_value) mutable {
-                asio::async_read_until(
+                boost::asio::async_read_until(
                     socket, buffer, delim,
                     [handle, set_resume_value = std::move(set_resume_value)](
                         auto ec, auto size) mutable {
@@ -141,11 +183,11 @@ namespace waterside
     }
 
     template <typename Socket, typename AsioBuffer>
-    inline async_simple::coro::Lazy<std::pair<std::error_code, size_t>> async_write(
+    inline async_simple::coro::Lazy<std::pair<boost::system::error_code, size_t>> async_write(
         Socket& socket, AsioBuffer&& buffer) noexcept {
-        co_return co_await AsioCallbackAwaiter<std::pair<std::error_code, size_t>>{
+        co_return co_await AsioCallbackAwaiter<std::pair<boost::system::error_code, size_t>>{
             [&](std::coroutine_handle<> handle, auto set_resume_value) mutable {
-                asio::async_write(
+                boost::asio::async_write(
                     socket, std::move(buffer),
                     [handle, set_resume_value = std::move(set_resume_value)](
                         auto ec, auto size) mutable {
@@ -155,14 +197,14 @@ namespace waterside
                 }};
     }
 
-    inline async_simple::coro::Lazy<std::error_code> async_connect(
-        asio::io_context& io_context, asio::ip::tcp::socket& socket,
+    inline async_simple::coro::Lazy<boost::system::error_code> async_connect(
+        boost::asio::io_context& io_context, boost::asio::ip::tcp::socket& socket,
         const string& host, const string& port) noexcept {
-        co_return co_await AsioCallbackAwaiter<std::error_code>{
+        co_return co_await AsioCallbackAwaiter<boost::system::error_code>{
             [&](std::coroutine_handle<> handle, auto set_resume_value) mutable {
-                asio::ip::tcp::resolver resolver(io_context);
+                boost::asio::ip::tcp::resolver resolver(io_context);
                 auto endpoints = resolver.resolve(host, port);
-                asio::async_connect(
+                boost::asio::async_connect(
                     socket, endpoints,
                     [handle, set_resume_value = std::move(set_resume_value)](
                         auto ec, auto size) mutable {
@@ -172,9 +214,9 @@ namespace waterside
                 }};
     }
 
-    inline async_simple::coro::Lazy<std::error_code> async_timer_delay(
-        asio::steady_timer& timer) noexcept {
-        co_return co_await AsioCallbackAwaiter<std::error_code>{
+    inline async_simple::coro::Lazy<boost::system::error_code> async_timer_delay(
+        boost::asio::steady_timer& timer) noexcept {
+        co_return co_await AsioCallbackAwaiter<boost::system::error_code>{
             [&](std::coroutine_handle<> handle, auto set_resume_value) mutable {
                 timer.async_wait(
                     [handle, set_resume_value = std::move(set_resume_value)](

@@ -1,7 +1,7 @@
 #include "TcpNetwork.h"
 #include "async_simple/coro/SyncAwait.h"
 
-using asio::ip::tcp;
+using boost::asio::ip::tcp;
 
 int testaa(int a, int b)
 {
@@ -16,13 +16,17 @@ void testfb(const waterside::RpcPacketConnectReply* fb)
 
 int main(int argc, char* argv[]) {
 
+#ifdef _MSC_VER
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
+
     waterside::TcpNetwork net(std::thread::hardware_concurrency(), tcp::endpoint(tcp::v4(), 9980));
 	
 	net.registHandler<testaa>();
 	net.registHandler<testfb>();
 
 	//async_simple::coro::syncAwait(net.start());
-    net.start().start([](async_simple::Try<void> Result) {
+	net.start([]() {}).start([](async_simple::Try<void> Result) {
 		if (Result.hasError())
 			std::cout << "Error Happened in task.\n";
 		else
@@ -36,7 +40,7 @@ int main(int argc, char* argv[]) {
 		std::this_thread::sleep_for(std::chrono::duration<float>(0.1f));
 	}
 
-    net.stop();
+	net.release();
 
     return 0;
 }

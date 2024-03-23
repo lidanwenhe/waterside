@@ -4,8 +4,7 @@
 namespace waterside
 {
 	SnowflakeId::SnowflakeId()
-		: mbInit(false)
-		, mWorkerId(0)
+		: mWorkerId(0)
 		, mSequenceMask(0)
 		, mSequence(0)
 		, mTimestampLeftShift(0)
@@ -42,15 +41,11 @@ namespace waterside
 		mTimestampMask = (1LL << (63 - mTimestampLeftShift)) - 1;
 
 		mWorkerId <<= workerIdShift;
-
-		mbInit = true;
 		return true;
 	}
 
 	unique_id SnowflakeId::nextId()
 	{
-		assert(mbInit);
-
 		std::lock_guard<std::mutex> lock(mMutex);
 
 		int64_t timestamp = getTimestamp();

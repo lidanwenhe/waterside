@@ -1,0 +1,26 @@
+include "CommonConfig.fbs";
+
+namespace waterside;
+
+/// 游戏服务器配置
+table GameConfig
+{
+	/// 服务器ID
+	server_id : int;
+	/// 服务名
+	service_name : string (required);
+	
+	/// 逻辑帧速
+	logic_fps : float;
+	/// 逻辑警告日志帧速
+	logic_fps_warning : float;
+	
+	/// 网络监听配置
+	network : NetworkListenConfig (required);
+	/// 名字注册服务器IP
+	namereg_ip : string (required);
+	/// 名字注册服务器端口
+	namereg_port : string (required);
+}
+
+root_type GameConfig;

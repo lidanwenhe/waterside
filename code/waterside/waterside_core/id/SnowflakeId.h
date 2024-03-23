@@ -8,18 +8,17 @@ namespace waterside
 	class SnowflakeId final : public TLazySingleton<SnowflakeId>
 	{
 	public:
+		SnowflakeId();
+
 		bool initialize(int32_t workerId = 0, int32_t workerIdBits = 10, int32_t sequenceBits = 12);
 
 		unique_id nextId();
 
 	protected:
-		SnowflakeId();
-
 		int64_t getTimestamp();
 		int64_t getNextTimestamp(int64_t lastTimestamp);
 
 	private:
-		bool mbInit;
 		// 工作机器ID
 		int64_t mWorkerId;
 		// 生成序列的掩码

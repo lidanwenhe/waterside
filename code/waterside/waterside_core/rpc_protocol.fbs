@@ -3,8 +3,10 @@ namespace waterside;
 enum MESSAGE_PACKET_TYPE : ubyte
 {
 	PING,
+	DISCONNECT,
 	RPC_REQUEST,
 	RPC_RESPONSE,
+	MYSQL,
 }
 
 enum SERIALIZATION_TYPE : ubyte

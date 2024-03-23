@@ -25,6 +25,19 @@ namespace waterside
     {
         mSessions.insert(std::make_pair(pSession->getSessionId(), pSession));
     }
+
+    void NetworkBase::closeAllSession()
+    {
+        vector<std::shared_ptr<SessionBase>> vec;
+        for (auto& item : mSessions)
+        {
+            vec.emplace_back(item.second);
+        }
+        for (auto& p : vec)
+        {
+            p->asyncCloseSocket();
+        }
+    }
     
     string_view NetworkBase::getFunctionName(uint32_t key)
     {
@@ -43,7 +56,17 @@ namespace waterside
             {
                 onDispatch(p).start([](async_simple::Try<void> Result) {
                     if (Result.hasError())
-                        MLOG_ERROR(NET, "Error Happened in task.");
+                    {
+                        std::exception_ptr error = Result.getException();
+                        try
+                        {
+                            std::rethrow_exception(error);
+                        }
+                        catch (const std::exception& e)
+                        {
+                            LOG_ERROR("Error Happened in task. {}", e.what());
+                        }
+                    }
                     });
             }
         }
@@ -71,6 +94,12 @@ namespace waterside
     {
         switch (pContext->header.packet_type())
         {
+        case MESSAGE_PACKET_TYPE_DISCONNECT:
+            if (onDisconnectCallback)
+            {
+                onDisconnectCallback(pContext->sessionId);
+            }
+            break;
         case MESSAGE_PACKET_TYPE_RPC_REQUEST:
         {
             std::optional<vector<char>> res;

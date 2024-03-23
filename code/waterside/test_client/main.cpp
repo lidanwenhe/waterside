@@ -1,7 +1,7 @@
 #include "TcpNetwork.h"
 #include "async_simple/coro/SyncAwait.h"
 
-using asio::ip::tcp;
+using boost::asio::ip::tcp;
 
 
 int testaa(int a, int b);
@@ -28,14 +28,14 @@ async_simple::coro::Lazy<void> test_rpc_call(waterside::TcpNetwork& net, watersi
 int main(int argc, char *argv[]) {
     try {
         waterside::TcpNetwork net(1, tcp::endpoint(tcp::v4(), 9981));
-        net.start().start([](async_simple::Try<void> Result) {
+        net.start([]() {}).start([](async_simple::Try<void> Result) {
             if (Result.hasError())
                 std::cout << "Error Happened in task.\n";
             else
                 std::cout << "task completed successfully.\n";
             });
 
-        net.connect("127.0.0.1", "9980").start([&net](async_simple::Try<std::pair<std::error_code, waterside::SessionID>> Result) {
+        net.connect("127.0.0.1", "9980").start([&net](async_simple::Try<std::pair<boost::system::error_code, waterside::SessionID>> Result) {
             if (Result.hasError())
             {
                 std::exception_ptr error = Result.getException();
@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
             std::this_thread::sleep_for(std::chrono::duration<float>(0.1f));
         }
 
-        net.stop();
+        net.release();
     } catch (std::exception &e) {
         std::cerr << "Exception: " << e.what() << "\n";
     }

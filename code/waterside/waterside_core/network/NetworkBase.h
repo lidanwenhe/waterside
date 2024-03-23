@@ -6,24 +6,10 @@
 #include "Logger.h"
 #include "tbb/concurrent_queue.h"
 #include "async_simple/coro/FutureAwaiter.h"
-#include "ylt/util/type_traits.h"
-#include "ylt/util/utils.hpp"
 #include "ylt/struct_pack.hpp"
 
 namespace waterside
 {
-	template <typename T>
-	struct get_type_t
-	{
-		using type = T;
-	};
-
-	template <typename T>
-	struct get_type_t<async_simple::coro::Lazy<T>>
-	{
-		using type = T;
-	};
-
 	class NetworkBase
 	{
 	public:
@@ -34,6 +20,8 @@ namespace waterside
 		void addProcessPacket(std::shared_ptr<NetworkContext>& pContext);
 
 		void onProcessPacket();
+
+		std::function<void(SessionID)> onDisconnectCallback;
 
 		template <auto func>
 		void registHandler()
@@ -67,21 +55,6 @@ namespace waterside
 			}
 
 			mFuncId2Name.emplace(key, name);
-		}
-
-		template <auto func>
-		constexpr static auto getReturnType()
-		{
-			using Function = decltype(func);
-			using return_type = typename get_type_t<coro_rpc::function_return_type_t<Function>>::type;
-			if constexpr (std::is_void_v<return_type>)
-			{
-				return nullptr;
-			}
-			else
-			{
-				return return_type{};
-			}
 		}
 
 		template <auto func, typename... Args>
@@ -270,7 +243,6 @@ namespace waterside
 			constexpr bool bContext = hasContext<param_type>();
 			constexpr bool bObjectMemberFunction = isObjectmemberFunction<Function>();
 
-			std::size_t offset = sizeof(RpcPacketHeader);
 			if constexpr (sizeof...(Args) > 0)
 			{
 				auto _args = getArgs<bContext, bObjectMemberFunction, param_type>();
@@ -285,8 +257,7 @@ namespace waterside
 				}
 				else
 				{
-					using arg_types = coro_rpc::function_parameters_t<decltype(func)>;
-					pack_to<arg_types>(buffer, std::forward<Args>(args)...);
+					pack_to<decltype(_args)>(buffer, std::forward<Args>(args)...);
 					return SERIALIZATION_TYPE_STRUCT_PACK;
 				}
 			}
@@ -852,6 +823,9 @@ namespace waterside
 		CoroDispatchHandler* getCoroDispatchHandler(uint32_t funcid);
 
 		async_simple::coro::Lazy<void> onDispatch(std::shared_ptr<NetworkContext> pContext);
+
+	protected:
+		void closeAllSession();
 
 	private:
 		SessionIdManager mSessionIdManager;

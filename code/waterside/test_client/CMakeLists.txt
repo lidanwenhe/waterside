@@ -1,6 +1,7 @@
-﻿find_package(TBB REQUIRED)
+﻿find_package(Boost REQUIRED)
 
 include_directories(
+	${Boost_INCLUDE_DIRS}
 	../waterside_core
 	../waterside_core/logger
 	../waterside_core/signal

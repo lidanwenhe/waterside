@@ -23,6 +23,8 @@ namespace waterside
 
 		virtual ~SessionBase() = default;
 
+		virtual void asyncCloseSocket() {}
+
 		void send(const RpcPacketHeader& header, const std::pair<const void*, size_t>& body);
 
 		SessionID getSessionId() const
@@ -30,8 +32,8 @@ namespace waterside
 			return mSessionId;
 		}
 
-		virtual string getRemoteAddress() const = 0;
-		virtual string getLocalAddress() const = 0;
+		virtual string_view getRemoteAddress() const = 0;
+		virtual string_view getLocalAddress() const = 0;
 
 	protected:
 		bool parseRecvPacket(char* buf, size_t& recvbytes);

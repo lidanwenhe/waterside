@@ -7,7 +7,7 @@ namespace waterside
 {
 	constexpr size_t TCP_MESSAGE_MAX_LENGTH = 8192;
 
-	TcpSession::TcpSession(NetworkBase* pNetwork, SessionID sessionId, AsioExecutor* executor, asio::ip::tcp::socket&& socket)
+	TcpSession::TcpSession(NetworkBase* pNetwork, SessionID sessionId, AsioExecutor* executor, boost::asio::ip::tcp::socket&& socket)
 		: SessionBase(pNetwork, sessionId, executor)
         , mSocket(std::move(socket))
 		, mTimer(executor->getIoContext())
@@ -23,20 +23,38 @@ namespace waterside
 	{
 		if (mbHasClosed)
 			return;
-		std::error_code ec;
-		mTimer.cancel(ec);
-		mSocket.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
-		mSocket.close(ec);
 		mbHasClosed = true;
+		boost::system::error_code ec;
+		mTimer.cancel(ec);
+		mSocket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+		mSocket.close(ec);
+	}
+
+	void TcpSession::asyncCloseSocket()
+	{
+		if (mbHasClosed)
+			return;
+
+		mpExecutor->schedule([this, self = shared_from_this()] {
+			closeSocket();
+			});
 	}
 
 	async_simple::coro::Lazy<void> TcpSession::start()
 	{
-		onTimer().start([](async_simple::Try<void> Result) {
+		onTimer(shared_from_this()).start([](async_simple::Try<void> Result) {
 			if (Result.hasError())
-				std::cout << "Error Happened in task.\n";
-			else
-				std::cout << "task completed successfully.\n";
+			{
+				std::exception_ptr error = Result.getException();
+				try
+				{
+					std::rethrow_exception(error);
+				}
+				catch (const std::exception& e)
+				{
+					LOG_ERROR("Error Happened in task. {}", e.what());
+				}
+			}
 			});
 
 		char recvbuf[TCP_MESSAGE_MAX_LENGTH];
@@ -44,7 +62,7 @@ namespace waterside
 
 		for (;;)
 		{
-			auto [ec, length] = co_await async_read_some(mSocket, asio::buffer(recvbuf + recvbytes, TCP_MESSAGE_MAX_LENGTH - recvbytes));
+			auto [ec, length] = co_await async_read_some(mSocket, boost::asio::buffer(recvbuf + recvbytes, TCP_MESSAGE_MAX_LENGTH - recvbytes));
 			if (ec)
 			{
 				MLOG_WARN(NET, "async_read error:{}", ec.message());
@@ -59,15 +77,24 @@ namespace waterside
 			}
 		}
 
-        std::cout << "session thread id:" << std::this_thread::get_id()
-            << std::endl;
+		MLOG_INFO(NET, "{} disconnected", getRemoteAddress());
+
+		auto pContext = std::make_shared<NetworkContext>(mSessionId,
+			RpcPacketHeader{
+				MESSAGE_PACKET_TYPE_DISCONNECT,
+				SERIALIZATION_TYPE_NO,
+				0, 0, 0
+			},
+			vector<char>{});
+		mpNetwork->addProcessPacket(pContext);
+		
 
 		closeSocket();
 
         mpNetwork->cleanSession(mSessionId);
 	}
 
-	async_simple::coro::Lazy<void> TcpSession::onTimer()
+	async_simple::coro::Lazy<void> TcpSession::onTimer(std::shared_ptr<TcpSession> pSession)
 	{
 		if (mbHasClosed)
 			co_return;
@@ -81,7 +108,8 @@ namespace waterside
 
 					if (!mbHasClosed)
 					{
-						//onSending();
+						addProcessPacket();
+						co_await onSending();
 
 						onTimer();
 					}
@@ -94,7 +122,7 @@ namespace waterside
 		{
 			addProcessPacket();
 			co_await onSending();
-			co_await onTimer();
+			co_await onTimer(pSession);
 		}
 	}
 
@@ -109,7 +137,7 @@ namespace waterside
 			if (!getSendPacket(p))
 				break;
 
-			auto [ec, _] = co_await async_write(mSocket, asio::buffer(p->data(), p->size()));
+			auto [ec, _] = co_await async_write(mSocket, boost::asio::buffer(p->data(), p->size()));
 			if (ec)
 			{
 				MLOG_WARN(NET, "async_write error:{}", ec.message());
@@ -118,11 +146,11 @@ namespace waterside
 		}
 	}
 
-	string TcpSession::getRemoteAddress() const
+	string_view TcpSession::getRemoteAddress() const
 	{
 		if (mRemoteAddress.empty())
 		{
-			std::error_code ec;
+			boost::system::error_code ec;
 			auto ep = mSocket.remote_endpoint(ec);
 			if (ec)
 			{
@@ -148,11 +176,11 @@ namespace waterside
 		return mRemoteAddress;
 	}
 
-	string TcpSession::getLocalAddress() const
+	string_view TcpSession::getLocalAddress() const
 	{
 		if (mLocalAddress.empty())
 		{
-			std::error_code ec;
+			boost::system::error_code ec;
 			auto ep = mSocket.local_endpoint(ec);
 			if (ec)
 			{

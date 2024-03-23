@@ -1,0 +1,9 @@
+[requires]
+boost/1.84.0
+onetbb/2021.10.0
+flatbuffers/23.5.26
+libmysqlclient/8.1.0
+
+[generators]
+CMakeToolchain
+CMakeDeps

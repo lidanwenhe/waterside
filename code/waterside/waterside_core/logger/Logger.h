@@ -9,6 +9,7 @@ namespace waterside
 	{
 		LOGGER_CATEGORY_DEFAULT,
 		LOGGER_CATEGORY_NET,
+		LOGGER_CATEGORY_MYSQL,
 	};
 
 	/**

@@ -1,0 +1,23 @@
+namespace waterside;
+
+/// 网络监听配置
+table NetworkListenConfig
+{
+	/// 本服务器ip
+	ip : string (required);
+	/// 监听端口
+	port : ushort;
+	/// 启动网络线程数，0为CPU数处理线程
+	multi_threading : uint;
+}
+
+/// Mysql配置
+table MysqlConfig
+{
+	/// mysql连接格式：mysql://user:pwd@host:port/db
+	url : string (required);
+	/// 默认CPU数处理线程，0为CPU数处理线程
+	multi_threading : uint;
+	/// 断开连接后自动重连等待多少秒
+	reconnect_delay_second : uint = 10;
+}

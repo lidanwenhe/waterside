@@ -1,0 +1,11 @@
+{
+  "server_id": 1,
+  "service_name": "NameReg",
+  "logic_fps": 30,
+  "logic_fps_warning": 20,
+  "network": {
+    "ip": "127.0.0.1",
+    "port": 8000,
+    "multi_threading": 0
+  }
+}

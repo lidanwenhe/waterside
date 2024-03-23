@@ -4,28 +4,30 @@
 
 namespace waterside
 {
-	class TcpSession : public SessionBase
+	class TcpSession : public SessionBase, public std::enable_shared_from_this<TcpSession>
 	{
 	public:
-		TcpSession(NetworkBase* pNetwork, SessionID sessionId, AsioExecutor* executor, asio::ip::tcp::socket&& socket);
+		TcpSession(NetworkBase* pNetwork, SessionID sessionId, AsioExecutor* executor, boost::asio::ip::tcp::socket&& socket);
 
 		virtual ~TcpSession();
 
 		async_simple::coro::Lazy<void> start();
 
-		virtual string getRemoteAddress() const override;
-		virtual string getLocalAddress() const override;
+		virtual void asyncCloseSocket() override;
+
+		virtual string_view getRemoteAddress() const override;
+		virtual string_view getLocalAddress() const override;
 
 	private:
 		void closeSocket();
 
-		async_simple::coro::Lazy<void> onTimer();
+		async_simple::coro::Lazy<void> onTimer(std::shared_ptr<TcpSession> pSession);
 
 		async_simple::coro::Lazy<void> onSending();
 
 	private:
-		asio::ip::tcp::socket mSocket;
-		asio::steady_timer mTimer;
+		boost::asio::ip::tcp::socket mSocket;
+		boost::asio::steady_timer mTimer;
 		bool mbHasClosed = false;
 	};
 }
