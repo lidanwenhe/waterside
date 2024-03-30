@@ -63,36 +63,35 @@
 #include <source_location>
 #include <concepts>
 
+#ifdef _MSC_VER
+#	ifdef _DEBUG
+#		define _CRTDBG_MAP_ALLOC
+#		include <crtdbg.h>
+#		define DEBUG_NEW new(_CLIENT_BLOCK, __FILE__, __LINE__)
+#		define malloc(s) _malloc_dbg(s, _CLIENT_BLOCK, __FILE__, __LINE__)
+#		define calloc(c, s) _calloc_dbg(c, s, _CLIENT_BLOCK, __FILE__, __LINE__)
+#		define realloc(p, s) _realloc_dbg(p, s, _CLIENT_BLOCK, __FILE__, __LINE__)
+#	else
+#		include "tbb/tbbmalloc_proxy.h"
+#		define DEBUG_NEW new
+#	endif
+#else
+#	define DEBUG_NEW new
+#endif
+
 //using namespace std::literals;
 using namespace std::literals::string_view_literals;
 
 
 namespace waterside
 {
-	using std::string;
-	using std::string_view;
-	using std::vector;
-	using std::deque;
-	using std::list;
-	using std::map;
-	using std::multimap;
-	using std::set;
-	using std::multiset;
-	using std::unordered_map;
-	using std::unordered_multimap;
-	using std::unordered_set;
-	using std::unordered_multiset;
-	using std::stack;
-	using std::queue;
-	using std::priority_queue;
-
 	struct string_hash
 	{
 		using is_transparent = void;
 
-		using hash_type = std::hash<string_view>;
-		std::size_t operator()(string_view str) const { return hash_type{}(str); }
-		std::size_t operator()(const string& str) const { return hash_type{}(str); }
+		using hash_type = std::hash<std::string_view>;
+		std::size_t operator()(std::string_view str) const { return hash_type{}(str); }
+		std::size_t operator()(const std::string& str) const { return hash_type{}(str); }
 		std::size_t operator()(const char* str) const { return hash_type{}(str); }
 	};
 
@@ -100,14 +99,14 @@ namespace waterside
 	{
 		using is_transparent = void;
 
-		std::size_t operator()(string_view str) const;
-		std::size_t operator()(const string& str) const
+		std::size_t operator()(std::string_view str) const;
+		std::size_t operator()(const std::string& str) const
 		{
-			return operator()(string_view{ str });
+			return operator()(std::string_view{ str });
 		}
 		std::size_t operator()(const char* str) const
 		{
-			return operator()(string_view{ str });
+			return operator()(std::string_view{ str });
 		}
 	};
 
@@ -115,26 +114,26 @@ namespace waterside
 	{
 		using is_transparent = void;
 
-		bool operator()(string_view lhs, string_view rhs) const;
-		bool operator()(const string& lhs, const string& rhs) const
+		bool operator()(std::string_view lhs, std::string_view rhs) const;
+		bool operator()(const std::string& lhs, const std::string& rhs) const
 		{
-			return operator()(string_view{ lhs }, string_view{ rhs });
+			return operator()(std::string_view{ lhs }, std::string_view{ rhs });
 		}
 		bool operator()(const char* lhs, const char* rhs) const
 		{
-			return operator()(string_view{ lhs }, string_view{ rhs });
+			return operator()(std::string_view{ lhs }, std::string_view{ rhs });
 		}
 	};
 
 	template <typename T>
-	using string_map = unordered_map<string, T, string_hash, std::equal_to<>>;
+	using string_map = std::unordered_map<std::string, T, string_hash, std::equal_to<>>;
 
 	template <typename T>
-	using istring_map = unordered_map<string, T, case_insensitive_string_hash, case_insensitive_string_equal_to>;
+	using istring_map = std::unordered_map<std::string, T, case_insensitive_string_hash, case_insensitive_string_equal_to>;
 
-	using string_set = unordered_set<string, string_hash, std::equal_to<>>;
+	using string_set = std::unordered_set<std::string, string_hash, std::equal_to<>>;
 
-	using istring_set = unordered_set<string, case_insensitive_string_hash, case_insensitive_string_equal_to>;
+	using istring_set = std::unordered_set<std::string, case_insensitive_string_hash, case_insensitive_string_equal_to>;
 
 
 	typedef boost::error_info<struct tag_stacktrace, boost::stacktrace::stacktrace> traced;

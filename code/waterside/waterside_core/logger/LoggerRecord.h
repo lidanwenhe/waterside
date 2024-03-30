@@ -25,7 +25,7 @@ namespace waterside
 		LOGGER_LEVEL_FATAL = LOGGER_LEVEL_CRITICAL,
 	};
 
-	inline string_view getLoggerLevelName(LOGGER_LEVEL lv)
+	inline std::string_view getLoggerLevelName(LOGGER_LEVEL lv)
 	{
 		switch (lv)
 		{
@@ -64,9 +64,9 @@ namespace waterside
 			return mLevel;
 		}
 
-		string recordString() const;
+		std::string recordString() const;
 
-		string log;
+		std::string log;
 
 	private:
 		size_t getThreadId();

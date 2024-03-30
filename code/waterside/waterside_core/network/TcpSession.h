@@ -15,8 +15,8 @@ namespace waterside
 
 		virtual void asyncCloseSocket() override;
 
-		virtual string_view getRemoteAddress() const override;
-		virtual string_view getLocalAddress() const override;
+		virtual std::string_view getRemoteAddress() const override;
+		virtual std::string_view getLocalAddress() const override;
 
 	private:
 		void closeSocket();

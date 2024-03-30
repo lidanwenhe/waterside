@@ -28,7 +28,7 @@ namespace waterside
 
     void NetworkBase::closeAllSession()
     {
-        vector<std::shared_ptr<SessionBase>> vec;
+        std::vector<std::shared_ptr<SessionBase>> vec;
         for (auto& item : mSessions)
         {
             vec.emplace_back(item.second);
@@ -39,7 +39,7 @@ namespace waterside
         }
     }
     
-    string_view NetworkBase::getFunctionName(uint32_t key)
+    std::string_view NetworkBase::getFunctionName(uint32_t key)
     {
         if (auto it = mFuncId2Name.find(key); it != mFuncId2Name.end())
             return it->second;
@@ -100,9 +100,31 @@ namespace waterside
                 onDisconnectCallback(pContext->sessionId);
             }
             break;
+        case MESSAGE_PACKET_TYPE_MESSAGE:
+        {
+            auto funcid = pContext->header.function_id();
+            auto pDispatcher = mNetworkDispatcherManager.queryDispatcher(funcid);
+            if (pDispatcher)
+            {
+                pDispatcher->process(pContext);
+            }
+            else
+            {
+                auto pCoroDispatcher = mNetworkDispatcherManager.queryCoroDispatcher(funcid);
+                if (pCoroDispatcher)
+                {
+                    co_await pCoroDispatcher->process(pContext);
+                }
+                else
+                {
+                    MLOG_ERROR(NET, "id {} not registered!", funcid);
+                }
+            }
+        }
+        break;
         case MESSAGE_PACKET_TYPE_RPC_REQUEST:
         {
-            std::optional<vector<char>> res;
+            std::optional<std::vector<char>> res;
             auto funcid = pContext->header.function_id();
             try
             {
@@ -156,12 +178,30 @@ namespace waterside
         {
             if (auto it = mPromises.find(pContext->header.seq_num()); it != mPromises.end())
             {
-                it->second->promise.setValue(std::optional<vector<char>>{pContext->body});
+                it->second->promise.setValue(std::optional<std::vector<char>>{pContext->body});
             }
         }
         break;
         default:
             break;
         }
+    }
+
+    bool NetworkBase::send(SessionID sessionId, uint32_t id, const std::pair<const void*, size_t>& body)
+    {
+        auto pSession = findSession(sessionId);
+        if (!pSession)
+        {
+            return false;
+        }
+
+        RpcPacketHeader header(MESSAGE_PACKET_TYPE_MESSAGE,
+            SERIALIZATION_TYPE_FLAT_BUFFERS,
+            body.second,
+            0,
+            id
+        );
+        pSession->send(header, body);
+        return true;
     }
 }

@@ -28,23 +28,23 @@ namespace waterside
 		virtual void release();
 
 	protected:
-		void initLogger();
-		void releaseLogger();
+		virtual void initLogger();
+		virtual void releaseLogger();
 
 		virtual void onRegistHandler() {}
 
 		virtual void runonce(float deltaTime, double currentTime);
 
 		virtual int32_t getServerId() const = 0;
-		virtual string_view getServiceName() const = 0;
+		virtual std::string_view getServiceName() const = 0;
 		virtual float getLogicFps() = 0;
 		virtual float getLogicFpsWarning() = 0;
 		virtual uint16_t getNetListenPort() = 0;
 		virtual size_t getNetMultiThreading() = 0;
 
 	protected:
-		string mCfgPath;
-		string mLoggerName;
+		std::string mCfgPath;
+		std::string mLoggerName;
 		bool mbDaemon;
 
 		volatile bool mbRun;

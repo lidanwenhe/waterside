@@ -4,17 +4,14 @@
 
 namespace waterside
 {
-	class MysqlPrepareStmt final
+	class MysqlPrepareStmt : private boost::noncopyable
 	{
 	public:
 		MysqlPrepareStmt();
 
 		virtual ~MysqlPrepareStmt();
 
-		vector<MysqlStmtArgs> params;
-		vector<MysqlStmtArgs> results;
-
-		void initialize(int32_t index, std::string_view sql, const vector<MysqlStmtBindArgs>& vParams, const vector<MysqlStmtBindArgs>& vResults);
+		virtual void initialize() {}
 
 		void connect(MYSQL* pMysql);
 
@@ -25,15 +22,15 @@ namespace waterside
 			return nullptr != mpStmt;
 		}
 
-		virtual void execute();
+		void execute();
 
-		virtual bool fetch();
+		bool fetch();
 
-		virtual void clear();
+		void clear();
 
-		virtual uint64_t getInsertId();
+		uint64_t getInsertId();
 
-		virtual uint64_t getAffectedRows();
+		uint64_t getAffectedRows();
 
 	private:
 		void bindComplete();
@@ -43,20 +40,44 @@ namespace waterside
 		void bindResult();
 
 		// 计算缓存大小，和相关偏移值
-		size_t calcBufferSize(const vector<MysqlStmtBindArgs>& vParams, const vector<MysqlStmtBindArgs>& vResults);
+		size_t _calcBufferSize(const std::vector<MysqlStmtBindArgs>& vParams, const std::vector<MysqlStmtBindArgs>& vResults);
 
-		void callBindItem(size_t& offset, size_t& nAlignment, const MysqlStmtBindArgs& arg, MYSQL_BIND& item);
+		void _callBindItem(size_t& offset, size_t& nAlignment, const MysqlStmtBindArgs& arg, MYSQL_BIND& item);
 
-		void boundParams();
-		void storeResults();
+	protected:
+		void _initialize(uint32_t index, std::string_view sql, const std::vector<MysqlStmtBindArgs>& vParams, const std::vector<MysqlStmtBindArgs>& vResults);
+
+		void _setParam(size_t i, std::string_view name, int8_t value);
+		void _setParam(size_t i, std::string_view name, uint8_t value);
+		void _setParam(size_t i, std::string_view name, int16_t value);
+		void _setParam(size_t i, std::string_view name, uint16_t value);
+		void _setParam(size_t i, std::string_view name, int32_t value);
+		void _setParam(size_t i, std::string_view name, uint32_t value);
+		void _setParam(size_t i, std::string_view name, int64_t value);
+		void _setParam(size_t i, std::string_view name, uint64_t value);
+		void _setParam(size_t i, std::string_view name, float value);
+		void _setParam(size_t i, std::string_view name, double value);
+		void _setParam(size_t i, std::string_view name, std::string_view value);
+
+		void _getResult(size_t i, std::string_view name, int8_t& value);
+		void _getResult(size_t i, std::string_view name, uint8_t& value);
+		void _getResult(size_t i, std::string_view name, int16_t& value);
+		void _getResult(size_t i, std::string_view name, uint16_t& value);
+		void _getResult(size_t i, std::string_view name, int32_t& value);
+		void _getResult(size_t i, std::string_view name, uint32_t& value);
+		void _getResult(size_t i, std::string_view name, int64_t& value);
+		void _getResult(size_t i, std::string_view name, uint64_t& value);
+		void _getResult(size_t i, std::string_view name, float& value);
+		void _getResult(size_t i, std::string_view name, double& value);
+		void _getResult(size_t i, std::string_view name, std::string_view& value);
 
 	private:
 		MYSQL_STMT* mpStmt;
-		int32_t mIndex;
-		string mSql;
+		uint32_t mIndex;
+		std::string mSql;
 		bool mbProcess;
-		vector<MYSQL_BIND> mBindParams;
-		vector<MYSQL_BIND> mBindResults;
-		vector<uint8_t> mBuffer;
+		std::vector<MYSQL_BIND> mBindParams;
+		std::vector<MYSQL_BIND> mBindResults;
+		std::vector<uint8_t> mBuffer;
 	};
 }

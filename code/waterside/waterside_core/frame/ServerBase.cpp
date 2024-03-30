@@ -2,10 +2,6 @@
 #include "Logger.h"
 #include "SnowflakeId.h"
 #include "TimerManager.h"
-//#ifdef _MSC_VER
-//#define WIN32_LEAN_AND_MEAN
-//#include <Windows.h>
-//#endif
 
 namespace waterside
 {

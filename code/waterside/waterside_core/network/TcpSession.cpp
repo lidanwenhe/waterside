@@ -85,7 +85,7 @@ namespace waterside
 				SERIALIZATION_TYPE_NO,
 				0, 0, 0
 			},
-			vector<char>{});
+			std::vector<char>{});
 		mpNetwork->addProcessPacket(pContext);
 		
 
@@ -146,7 +146,7 @@ namespace waterside
 		}
 	}
 
-	string_view TcpSession::getRemoteAddress() const
+	std::string_view TcpSession::getRemoteAddress() const
 	{
 		if (mRemoteAddress.empty())
 		{
@@ -176,7 +176,7 @@ namespace waterside
 		return mRemoteAddress;
 	}
 
-	string_view TcpSession::getLocalAddress() const
+	std::string_view TcpSession::getLocalAddress() const
 	{
 		if (mLocalAddress.empty())
 		{

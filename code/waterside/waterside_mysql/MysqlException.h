@@ -49,7 +49,7 @@ namespace waterside
 		}
 
 	private:
-		string mWhat;
+		std::string mWhat;
 		unsigned int mErrno;
 	};
 }

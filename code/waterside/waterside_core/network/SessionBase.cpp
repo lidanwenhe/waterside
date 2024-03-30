@@ -35,7 +35,7 @@ namespace waterside
 				}
 
 				auto p = reinterpret_cast<char*>(header + 1);
-				mRecvPackets.emplace_back(std::make_shared<NetworkContext>(mSessionId, *header, vector<char>(p, p + header->length())));
+				mRecvPackets.emplace_back(std::make_shared<NetworkContext>(mSessionId, *header, std::vector<char>(p, p + header->length())));
 
 				offset += needbytes;
 			}

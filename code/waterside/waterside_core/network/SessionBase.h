@@ -11,7 +11,7 @@ namespace waterside
 	{
 		SessionID sessionId = 0;
 		RpcPacketHeader header;
-		vector<char> body;
+		std::vector<char> body;
 	};
 
 	constexpr size_t SESSION_SEND_MESSAGE_LENGTH = 1400;
@@ -32,8 +32,8 @@ namespace waterside
 			return mSessionId;
 		}
 
-		virtual string_view getRemoteAddress() const = 0;
-		virtual string_view getLocalAddress() const = 0;
+		virtual std::string_view getRemoteAddress() const = 0;
+		virtual std::string_view getLocalAddress() const = 0;
 
 	protected:
 		bool parseRecvPacket(char* buf, size_t& recvbytes);
@@ -55,17 +55,17 @@ namespace waterside
 		NetworkBase* mpNetwork;
 		SessionID mSessionId;
 		AsioExecutor* mpExecutor;
-		mutable string mRemoteAddress;
-		mutable string mLocalAddress;
+		mutable std::string mRemoteAddress;
+		mutable std::string mLocalAddress;
 		
 		uint32_t mSendPacketLimit = 100;
 		uint32_t mRecvPacketLimit = 100;
 		uint32_t mProcessPacketLimit = 100;
 
 	private:
-		deque<std::shared_ptr<SendBufInfo>> mSendBufs;
+		std::deque<std::shared_ptr<SendBufInfo>> mSendBufs;
 		std::mutex mSendMutex;
 
-		deque<std::shared_ptr<NetworkContext>> mRecvPackets;
+		std::deque<std::shared_ptr<NetworkContext>> mRecvPackets;
 	};
 }

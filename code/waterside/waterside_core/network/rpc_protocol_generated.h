@@ -23,17 +23,19 @@ struct RpcPacketConnectReplyBuilder;
 enum MESSAGE_PACKET_TYPE : uint8_t {
   MESSAGE_PACKET_TYPE_PING = 0,
   MESSAGE_PACKET_TYPE_DISCONNECT = 1,
-  MESSAGE_PACKET_TYPE_RPC_REQUEST = 2,
-  MESSAGE_PACKET_TYPE_RPC_RESPONSE = 3,
-  MESSAGE_PACKET_TYPE_MYSQL = 4,
+  MESSAGE_PACKET_TYPE_MESSAGE = 2,
+  MESSAGE_PACKET_TYPE_RPC_REQUEST = 3,
+  MESSAGE_PACKET_TYPE_RPC_RESPONSE = 4,
+  MESSAGE_PACKET_TYPE_MYSQL = 5,
   MESSAGE_PACKET_TYPE_MIN = MESSAGE_PACKET_TYPE_PING,
   MESSAGE_PACKET_TYPE_MAX = MESSAGE_PACKET_TYPE_MYSQL
 };
 
-inline const MESSAGE_PACKET_TYPE (&EnumValuesMESSAGE_PACKET_TYPE())[5] {
+inline const MESSAGE_PACKET_TYPE (&EnumValuesMESSAGE_PACKET_TYPE())[6] {
   static const MESSAGE_PACKET_TYPE values[] = {
     MESSAGE_PACKET_TYPE_PING,
     MESSAGE_PACKET_TYPE_DISCONNECT,
+    MESSAGE_PACKET_TYPE_MESSAGE,
     MESSAGE_PACKET_TYPE_RPC_REQUEST,
     MESSAGE_PACKET_TYPE_RPC_RESPONSE,
     MESSAGE_PACKET_TYPE_MYSQL
@@ -42,9 +44,10 @@ inline const MESSAGE_PACKET_TYPE (&EnumValuesMESSAGE_PACKET_TYPE())[5] {
 }
 
 inline const char * const *EnumNamesMESSAGE_PACKET_TYPE() {
-  static const char * const names[6] = {
+  static const char * const names[7] = {
     "PING",
     "DISCONNECT",
+    "MESSAGE",
     "RPC_REQUEST",
     "RPC_RESPONSE",
     "MYSQL",
@@ -119,21 +122,36 @@ FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(4) RpcPacketHeader FLATBUFFERS_FINAL_CLASS {
   waterside::MESSAGE_PACKET_TYPE packet_type() const {
     return static_cast<waterside::MESSAGE_PACKET_TYPE>(::flatbuffers::EndianScalar(packet_type_));
   }
+  void mutate_packet_type(waterside::MESSAGE_PACKET_TYPE _packet_type) {
+    ::flatbuffers::WriteScalar(&packet_type_, static_cast<uint8_t>(_packet_type));
+  }
   /// serialization type
   waterside::SERIALIZATION_TYPE serialize_type() const {
     return static_cast<waterside::SERIALIZATION_TYPE>(::flatbuffers::EndianScalar(serialize_type_));
+  }
+  void mutate_serialize_type(waterside::SERIALIZATION_TYPE _serialize_type) {
+    ::flatbuffers::WriteScalar(&serialize_type_, static_cast<uint8_t>(_serialize_type));
   }
   /// length of RPC body
   uint16_t length() const {
     return ::flatbuffers::EndianScalar(length_);
   }
+  void mutate_length(uint16_t _length) {
+    ::flatbuffers::WriteScalar(&length_, _length);
+  }
   /// sequence number
   uint32_t seq_num() const {
     return ::flatbuffers::EndianScalar(seq_num_);
   }
+  void mutate_seq_num(uint32_t _seq_num) {
+    ::flatbuffers::WriteScalar(&seq_num_, _seq_num);
+  }
   /// rpc function ID
   uint32_t function_id() const {
     return ::flatbuffers::EndianScalar(function_id_);
+  }
+  void mutate_function_id(uint32_t _function_id) {
+    ::flatbuffers::WriteScalar(&function_id_, _function_id);
   }
 };
 FLATBUFFERS_STRUCT_END(RpcPacketHeader, 12);
@@ -148,11 +166,20 @@ struct RpcPacketConnectReply FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Ta
   const ::flatbuffers::String *address() const {
     return GetPointer<const ::flatbuffers::String *>(VT_ADDRESS);
   }
+  ::flatbuffers::String *mutable_address() {
+    return GetPointer<::flatbuffers::String *>(VT_ADDRESS);
+  }
   uint32_t port() const {
     return GetField<uint32_t>(VT_PORT, 0);
   }
+  bool mutate_port(uint32_t _port = 0) {
+    return SetField<uint32_t>(VT_PORT, _port, 0);
+  }
   uint32_t conv() const {
     return GetField<uint32_t>(VT_CONV, 0);
+  }
+  bool mutate_conv(uint32_t _conv = 0) {
+    return SetField<uint32_t>(VT_CONV, _conv, 0);
   }
   bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&

@@ -6,9 +6,9 @@ namespace waterside
 {
 	struct RouteInfo
 	{
-		string serviceName;
-		string ip;
-		string port;
+		std::string serviceName;
+		std::string ip;
+		std::string port;
 		SessionID sessionId;
 		int32_t serverId;
 	};
@@ -20,15 +20,15 @@ namespace waterside
 
 		~RouteBase() = default;
 
-		bool addRouteInfo(string_view serviceName, string_view ip, string_view port, SessionID sessionId, int32_t serverId);
+		bool addRouteInfo(std::string_view serviceName, std::string_view ip, std::string_view port, SessionID sessionId, int32_t serverId);
 
 		void removeRouteInfo(SessionID sessionId);
 
-		std::shared_ptr<RouteInfo> findRouteInfoByServiceName(string_view serviceName);
+		std::shared_ptr<RouteInfo> findRouteInfoByServiceName(std::string_view serviceName);
 
 	private:
-		unordered_map<SessionID, std::shared_ptr<RouteInfo>> mRouteInfoBySessionID;
-		unordered_map<int32_t, std::shared_ptr<RouteInfo>> mRouteInfoByServerId;
+		std::unordered_map<SessionID, std::shared_ptr<RouteInfo>> mRouteInfoBySessionID;
+		std::unordered_map<int32_t, std::shared_ptr<RouteInfo>> mRouteInfoByServerId;
 		string_map<std::shared_ptr<RouteInfo>> mRouteInfoByServiceName;
 	};
 }

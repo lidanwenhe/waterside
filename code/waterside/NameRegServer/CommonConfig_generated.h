@@ -109,7 +109,7 @@ struct MysqlConfig FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
     VT_MULTI_THREADING = 6,
     VT_RECONNECT_DELAY_SECOND = 8
   };
-  /// mysql连接格式：mysqlx://user:pwd@host:port/db?ssl-mode=disabled
+  /// mysql连接格式：mysql://user:pwd@host:port/db
   const ::flatbuffers::String *url() const {
     return GetPointer<const ::flatbuffers::String *>(VT_URL);
   }

@@ -1,0 +1,20 @@
+{
+	/// 包名
+	package : "waterside",
+	// 类名
+	class_name: "LoginMysqlManagerBase",
+	all: [
+		// 账号登录
+		{
+			index: "StmtAccountLogin",
+			sql: "CALL `account_login`(?);",
+			params: [
+				{ name: "account", bind_type: VARSTRING },
+			],
+			results: [
+				{ name: "userid", bind_type: INT },
+			],
+			cb : RETURN
+		},
+	]
+}

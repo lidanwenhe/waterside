@@ -1,5 +1,5 @@
 @echo off
-set path=%path%;../../../tools
-flatc -c -o network -I . rpc_protocol.fbs
+set path=%path%;../../../bin/Release
+flatc -c -o network --gen-mutable rpc_protocol.fbs
 @echo on
 pause

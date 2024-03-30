@@ -4,7 +4,7 @@
 
 namespace waterside
 {
-	MysqlManager::MysqlManager(string_view url, uint32_t multithreading, uint32_t reconnectDelaySecond)
+	MysqlManager::MysqlManager(std::string_view url, uint32_t multithreading, uint32_t reconnectDelaySecond)
 		: mUrl(url)
 		, mReconnectDelaySecond(reconnectDelaySecond)
 		, mPool(multithreading)
@@ -18,8 +18,8 @@ namespace waterside
 			try
 			{
 				auto pSession = std::make_shared<MysqlSession>();
-				pSession->initialize(mUrl);
 				onRegisterStmt(pSession.get());
+				pSession->initialize(mUrl);
 				pSession->connect();
 
 				mpMysqlSessions.emplace_back(pSession);
@@ -60,7 +60,7 @@ namespace waterside
 			mThread.join();
 	}
 
-	string_view MysqlManager::getFunctionName(uint32_t key)
+	std::string_view MysqlManager::getFunctionName(uint32_t key)
 	{
 		if (auto it = mFuncId2Name.find(key); it != mFuncId2Name.end())
 			return it->second;
@@ -91,13 +91,13 @@ namespace waterside
 		return nullptr;
 	}
 
-	std::shared_ptr<MysqlSession> MysqlManager::getMysqlSession()
+	MysqlSession* MysqlManager::getMysqlSession()
 	{
 		std::lock_guard<std::mutex> lock(mMutex);
 
 		if (mNextMysqlSession < mpMysqlSessions.size())
 		{
-			return mpMysqlSessions[mNextMysqlSession++];
+			return mpMysqlSessions[mNextMysqlSession++].get();
 		}
 		return nullptr;
 	}
@@ -136,7 +136,7 @@ namespace waterside
 
 	void MysqlManager::proccess(std::shared_ptr<MysqlContext> pContext)
 	{
-		thread_local std::shared_ptr<MysqlSession> pMysqlSession;
+		thread_local MysqlSession* pMysqlSession = nullptr;
 		if (!pMysqlSession)
 		{
 			pMysqlSession = getMysqlSession();
@@ -144,19 +144,19 @@ namespace waterside
 		}
 
 		// 断线重连
-		reconnect(pMysqlSession.get());
+		reconnect(pMysqlSession);
 
 		for (int i = 0; i < 2; i++)
 		{
 			try
 			{
-				onDispatch(pMysqlSession.get(), pContext);
+				onDispatch(pMysqlSession, pContext);
 			}
 			catch (const MysqlException& e)
 			{
 				if (i == 0 && (e.geterrno() == CR_SERVER_LOST || e.geterrno() == CR_SERVER_GONE_ERROR))
 				{// 断线重连
-					reconnect(pMysqlSession.get());
+					reconnect(pMysqlSession);
 					continue;
 				}
 
@@ -190,7 +190,7 @@ namespace waterside
 
 	void MysqlManager::onDispatch(MysqlSession* pSession, std::shared_ptr<MysqlContext> pContext)
 	{
-		std::optional<vector<char>> res;
+		std::optional<std::vector<char>> res;
 		auto funcid = pContext->header.function_id();
 		try
 		{
@@ -233,7 +233,7 @@ namespace waterside
 			{
 				if (auto it = mPromises.find(pContext->header.seq_num()); it != mPromises.end())
 				{
-					it->second->promise.setValue(std::optional<vector<char>>{pContext->body});
+					it->second->promise.setValue(std::optional<std::vector<char>>{pContext->body});
 				}
 			}
 		}

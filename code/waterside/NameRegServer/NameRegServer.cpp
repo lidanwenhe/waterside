@@ -46,7 +46,7 @@ namespace waterside
 		return NameRegConfigManager::instance().getServerId();
 	}
 
-	string_view NameRegServer::getServiceName() const
+	std::string_view NameRegServer::getServiceName() const
 	{
 		return NameRegConfigManager::instance().getServiceName();
 	}

@@ -9,6 +9,7 @@ include_directories(
 	../waterside_core/object
 	../waterside_core/time
 	../waterside_core/network
+	../fbs
 	.
 	)
 

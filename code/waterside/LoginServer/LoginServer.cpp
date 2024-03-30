@@ -20,7 +20,6 @@ namespace waterside
 
 	async_simple::coro::Lazy<int> testxx(int x)
 	{
-		co_await LoginMysqlManager::instance()->query<onTestMysql>();
 		co_return x + 1;
 	}
 
@@ -28,6 +27,7 @@ namespace waterside
 	{
 		auto cfgLoginDB = LoginConfigManager::instance().config()->login_db();
 		mpLoginMysqlManager = std::make_unique<LoginMysqlManager>(cfgLoginDB->url()->string_view(), cfgLoginDB->multi_threading(), cfgLoginDB->reconnect_delay_second());
+		onRegistLoginDBHandler();
 		if (!mpLoginMysqlManager->initialize())
 			return false;
 
@@ -61,6 +61,18 @@ namespace waterside
 		return true;
 	}
 
+	void LoginServer::initLogger()
+	{
+		super::initLogger();
+		TLogger<LOGGER_CATEGORY_MYSQL>::instance().init(mLoggerName + "-MySQL");
+	}
+
+	void LoginServer::releaseLogger()
+	{
+		super::releaseLogger();
+		TLogger<LOGGER_CATEGORY_MYSQL>::instance().join();
+	}
+
 	void LoginServer::onRegistHandler()
 	{
 		auto cfg = LoginConfigManager::instance().config();
@@ -73,10 +85,13 @@ namespace waterside
 			cfg->server_id()
 		);
 
+		mDispatchManager.onRegistHandler(mpNetwork.get());
 		mpNetwork->registHandler<testxx>();
+	}
 
-		mpLoginMysqlManager->registHandler<onTestMysql>();
-
+	void LoginServer::onRegistLoginDBHandler()
+	{
+		mpLoginMysqlManager->onRegistHandler();
 	}
 
 	void LoginServer::runonce(float deltaTime, double currentTime)
@@ -88,7 +103,10 @@ namespace waterside
 	void LoginServer::release()
 	{
 		if (mpLoginMysqlManager)
+		{
 			mpLoginMysqlManager->release();
+			mpLoginMysqlManager.reset();
+		}
 		super::release();
 	}
 
@@ -97,7 +115,7 @@ namespace waterside
 		return LoginConfigManager::instance().getServerId();
 	}
 
-	string_view LoginServer::getServiceName() const
+	std::string_view LoginServer::getServiceName() const
 	{
 		return LoginConfigManager::instance().getServiceName();
 	}

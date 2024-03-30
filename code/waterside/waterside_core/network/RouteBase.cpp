@@ -3,7 +3,7 @@
 
 namespace waterside
 {
-	bool RouteBase::addRouteInfo(string_view serviceName, string_view ip, string_view port, SessionID sessionId, int32_t serverId)
+	bool RouteBase::addRouteInfo(std::string_view serviceName, std::string_view ip, std::string_view port, SessionID sessionId, int32_t serverId)
 	{
 		if (auto it = mRouteInfoByServerId.find(serverId); it != mRouteInfoByServerId.end())
 		{
@@ -20,7 +20,7 @@ namespace waterside
 			return false;
 		}
 
-		auto pInfo = std::make_shared<RouteInfo>(string{ serviceName }, string{ ip }, string{ port }, sessionId, serverId);
+		auto pInfo = std::make_shared<RouteInfo>(std::string{ serviceName }, std::string{ ip }, std::string{ port }, sessionId, serverId);
 		
 		mRouteInfoBySessionID[pInfo->sessionId] = pInfo;
 		mRouteInfoByServerId[pInfo->serverId] = pInfo;
@@ -43,7 +43,7 @@ namespace waterside
 		}
 	}
 
-	std::shared_ptr<RouteInfo> RouteBase::findRouteInfoByServiceName(string_view serviceName)
+	std::shared_ptr<RouteInfo> RouteBase::findRouteInfoByServiceName(std::string_view serviceName)
 	{
 		if (auto it = mRouteInfoByServiceName.find(serviceName); it != mRouteInfoByServiceName.end())
 		{

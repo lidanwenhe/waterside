@@ -1,0 +1,8 @@
+/// 消息ID
+enum MESSAGE_ID : uint
+{
+	/// 账号登录
+	ACCOUNT_LOGIN,
+	/// 账号登录回复
+	ACCOUNT_LOGIN_REPLY,
+}

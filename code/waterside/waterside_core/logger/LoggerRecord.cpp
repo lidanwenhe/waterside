@@ -17,7 +17,7 @@ namespace waterside
 		return tid;
 	}
 
-	string LoggerRecord::recordString() const
+	std::string LoggerRecord::recordString() const
 	{
 		return std::format("{} {} [{}] ({}:{}<{}>) {}\n",
 			mTp,

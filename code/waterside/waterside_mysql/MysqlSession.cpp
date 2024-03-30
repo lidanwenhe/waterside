@@ -35,15 +35,27 @@ namespace waterside
 			mUser = url.substr(0, i);
 			url = url.substr(i + 1);
 		}
+		else
+		{
+			MLOG_ERROR(MYSQL, "mysql url={} user not found"sv, url);
+		}
 		if (auto i = url.find("@"); i != std::string_view::npos)
 		{
 			mPassword = url.substr(0, i);
 			url = url.substr(i + 1);
 		}
+		else
+		{
+			MLOG_ERROR(MYSQL, "mysql url={} password not found"sv, url);
+		}
 		if (auto i = url.find("/"); i != std::string_view::npos)
 		{
 			mDB = url.substr(i + 1);
 			url = url.substr(0, i);
+		}
+		else
+		{
+			MLOG_ERROR(MYSQL, "mysql url={} db not found"sv, url);
 		}
 		if (auto i = url.find(":"); i != std::string_view::npos)
 		{
@@ -78,9 +90,9 @@ namespace waterside
 			MYSQL_DB_THROW(mysql_errno(mpMysql), mysql_error(mpMysql), mysql_sqlstate(mpMysql), "New client character set: {}"sv, mysql_character_set_name(mpMysql));
 		}
 
-		for (auto& item : mStmt)
+		for (auto& p : mStmt)
 		{
-			item.second.connect(mpMysql);
+			p->connect(mpMysql);
 		}
 	}
 
@@ -126,34 +138,31 @@ namespace waterside
 		}
 	}
 
-	void MysqlSession::registerStmt(int32_t index, std::string_view sql, const vector<MysqlStmtBindArgs>& vParams, const vector<MysqlStmtBindArgs>& vResults)
+	void MysqlSession::registerStmt(std::unique_ptr<MysqlPrepareStmt>&& pstmt)
 	{
-		if (mStmt.contains(index))
-		{
-			MYSQL_DB_THROW("reg same index={},sql={}"sv, index, sql);
-		}
-
-		auto& item = mStmt[index];
-		item.initialize(index, sql, vParams, vResults);
+		pstmt->initialize();
+		mStmt.emplace_back(std::move(pstmt));
 	}
 
-	MysqlPrepareStmt* MysqlSession::findStmt(int32_t index)
+	MysqlPrepareStmt* MysqlSession::findStmt(uint32_t index)
 	{
-		if (auto it = mStmt.find(index); it != mStmt.end())
+		if (index >= mStmt.size())
 		{
-			if (!it->second.isvalid())
-			{
-				return nullptr;
-			}
-
-			if (mpCurStmt)
-			{
-				mpCurStmt->clear();
-			}
-			mpCurStmt = &it->second;
-			return mpCurStmt;
+			return nullptr;
 		}
-		return nullptr;
+
+		MysqlPrepareStmt* pStmt = mStmt[index].get();
+		if (!pStmt->isvalid())
+		{
+			return nullptr;
+		}
+
+		if (mpCurStmt)
+		{
+			mpCurStmt->clear();
+		}
+		mpCurStmt = pStmt;
+		return mpCurStmt;
 	}
 
 	void MysqlSession::startTransaction()

@@ -15,7 +15,7 @@ namespace waterside
 		close();
 	}
 
-	void MysqlPrepareStmt::initialize(int32_t index, std::string_view sql, const vector<MysqlStmtBindArgs>& vParams, const vector<MysqlStmtBindArgs>& vResults)
+	void MysqlPrepareStmt::_initialize(uint32_t index, std::string_view sql, const std::vector<MysqlStmtBindArgs>& vParams, const std::vector<MysqlStmtBindArgs>& vResults)
 	{
 		mIndex = index;
 		if (sql.empty())
@@ -36,7 +36,7 @@ namespace waterside
 		mBindResults.resize(vResults.size());
 
 
-		mBuffer.resize(calcBufferSize(vParams, vResults));
+		mBuffer.resize(_calcBufferSize(vParams, vResults));
 		auto p = mBuffer.data();
 		for (auto& item : mBindParams)
 		{
@@ -64,7 +64,7 @@ namespace waterside
 		}
 	}
 
-	size_t MysqlPrepareStmt::calcBufferSize(const vector<MysqlStmtBindArgs>& vParams, const vector<MysqlStmtBindArgs>& vResults)
+	size_t MysqlPrepareStmt::_calcBufferSize(const std::vector<MysqlStmtBindArgs>& vParams, const std::vector<MysqlStmtBindArgs>& vResults)
 	{
 		size_t offset = 0;
 		size_t nAlignment = 1;
@@ -73,19 +73,19 @@ namespace waterside
 		{
 			auto& arg = vParams[i];
 			auto& item = mBindParams[i];
-			callBindItem(offset, nAlignment, arg, item);
+			_callBindItem(offset, nAlignment, arg, item);
 		}
 		n = vResults.size();
 		for (size_t i = 0; i < n; i++)
 		{
 			auto& arg = vResults[i];
 			auto& item = mBindResults[i];
-			callBindItem(offset, nAlignment, arg, item);
+			_callBindItem(offset, nAlignment, arg, item);
 		}
 		return offset;
 	}
 
-	void MysqlPrepareStmt::callBindItem(size_t& offset, size_t& nAlignment, const MysqlStmtBindArgs& arg, MYSQL_BIND& item)
+	void MysqlPrepareStmt::_callBindItem(size_t& offset, size_t& nAlignment, const MysqlStmtBindArgs& arg, MYSQL_BIND& item)
 	{
 		memset(&item, 0, sizeof(MYSQL_BIND));
 
@@ -218,6 +218,7 @@ namespace waterside
 			offset += nSize;
 			item.buffer_length = nSize;
 		}
+		break;
 		default:
 			break;
 		}
@@ -253,78 +254,237 @@ namespace waterside
 		}
 	}
 
-	void MysqlPrepareStmt::boundParams()
+	void MysqlPrepareStmt::_setParam(size_t i, std::string_view name, int8_t value)
 	{
-		if (mBindParams.empty())
+		if (i < mBindParams.size())
 		{
-			return;
-		}
-
-		if (params.size() != mBindParams.size())
-		{
-			MYSQL_DB_THROW("mysql bound params size error:{}, need:{}"sv, params.size(), mBindParams.size());
-		}
-
-		size_t n = params.size();
-		for (size_t i = 0; i < n; i++)
-		{
-			auto& arg = params[i];
 			auto& item = mBindParams[i];
-			switch (item.buffer_type)
+			if (item.buffer_type == MYSQL_TYPE_TINY && !item.is_unsigned)
 			{
-			case MYSQL_TYPE_TINY:
-				if (item.is_unsigned)
-				{
-					*reinterpret_cast<uint8_t*>(item.buffer) = (uint8_t)std::get<int32_t>(arg);
-				}
-				else
-				{
-					*reinterpret_cast<int8_t*>(item.buffer) = (int8_t)std::get<int32_t>(arg);
-				}
-				break;
-			case MYSQL_TYPE_SHORT:
-				if (item.is_unsigned)
-				{
-					*reinterpret_cast<uint16_t*>(item.buffer) = (uint16_t)std::get<int32_t>(arg);
-				}
-				else
-				{
-					*reinterpret_cast<int16_t*>(item.buffer) = (int16_t)std::get<int32_t>(arg);
-				}
-				break;
-			case MYSQL_TYPE_LONG:
-				if (item.is_unsigned)
-				{
-					*reinterpret_cast<uint32_t*>(item.buffer) = (uint32_t)std::get<int32_t>(arg);
-				}
-				else
-				{
-					*reinterpret_cast<int32_t*>(item.buffer) = std::get<int32_t>(arg);
-				}
-				break;
-			case MYSQL_TYPE_LONGLONG:
-				if (item.is_unsigned)
-				{
-					*reinterpret_cast<uint64_t*>(item.buffer) = (uint64_t)std::get<int64_t>(arg);
-				}
-				else
-				{
-					*reinterpret_cast<int64_t*>(item.buffer) = std::get<int64_t>(arg);
-				}
-				break;
-			case MYSQL_TYPE_FLOAT:
-				*reinterpret_cast<float*>(item.buffer) = std::get<float>(arg);
-				break;
-			case MYSQL_TYPE_DOUBLE:
-				*reinterpret_cast<double*>(item.buffer) = std::get<double>(arg);
-				break;
-			case MYSQL_TYPE_STRING:
-			case MYSQL_TYPE_VAR_STRING:
-			case MYSQL_TYPE_TINY_BLOB:
-			case MYSQL_TYPE_BLOB:
-			case MYSQL_TYPE_MEDIUM_BLOB:
+				*reinterpret_cast<int8_t*>(item.buffer) = value;
+			}
+			else
 			{
-				auto value = std::get<std::string_view>(arg);
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound int8_t param error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound param out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindParams.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_setParam(size_t i, std::string_view name, uint8_t value)
+	{
+		if (i < mBindParams.size())
+		{
+			auto& item = mBindParams[i];
+			if (item.buffer_type == MYSQL_TYPE_TINY && item.is_unsigned)
+			{
+				*reinterpret_cast<uint8_t*>(item.buffer) = value;
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound uint8_t param error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound param out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindParams.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_setParam(size_t i, std::string_view name, int16_t value)
+	{
+		if (i < mBindParams.size())
+		{
+			auto& item = mBindParams[i];
+			if (item.buffer_type == MYSQL_TYPE_SHORT && !item.is_unsigned)
+			{
+				*reinterpret_cast<int16_t*>(item.buffer) = value;
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound int16_t param error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound param out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindParams.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_setParam(size_t i, std::string_view name, uint16_t value)
+	{
+		if (i < mBindParams.size())
+		{
+			auto& item = mBindParams[i];
+			if (item.buffer_type == MYSQL_TYPE_SHORT && item.is_unsigned)
+			{
+				*reinterpret_cast<uint16_t*>(item.buffer) = value;
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound uint16_t param error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound param out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindParams.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_setParam(size_t i, std::string_view name, int32_t value)
+	{
+		if (i < mBindParams.size())
+		{
+			auto& item = mBindParams[i];
+			if (item.buffer_type == MYSQL_TYPE_LONG && !item.is_unsigned)
+			{
+				*reinterpret_cast<int32_t*>(item.buffer) = value;
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound int32_t param error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound param out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindParams.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_setParam(size_t i, std::string_view name, uint32_t value)
+	{
+		if (i < mBindParams.size())
+		{
+			auto& item = mBindParams[i];
+			if (item.buffer_type == MYSQL_TYPE_LONG && item.is_unsigned)
+			{
+				*reinterpret_cast<uint32_t*>(item.buffer) = value;
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound uint32_t param error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound param out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindParams.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_setParam(size_t i, std::string_view name, int64_t value)
+	{
+		if (i < mBindParams.size())
+		{
+			auto& item = mBindParams[i];
+			if (item.buffer_type == MYSQL_TYPE_LONGLONG && !item.is_unsigned)
+			{
+				*reinterpret_cast<int64_t*>(item.buffer) = value;
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound int64_t param error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound param out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindParams.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_setParam(size_t i, std::string_view name, uint64_t value)
+	{
+		if (i < mBindParams.size())
+		{
+			auto& item = mBindParams[i];
+			if (item.buffer_type == MYSQL_TYPE_LONGLONG && item.is_unsigned)
+			{
+				*reinterpret_cast<uint64_t*>(item.buffer) = value;
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound uint64_t param error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound param out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindParams.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_setParam(size_t i, std::string_view name, float value)
+	{
+		if (i < mBindParams.size())
+		{
+			auto& item = mBindParams[i];
+			if (item.buffer_type == MYSQL_TYPE_FLOAT)
+			{
+				*reinterpret_cast<float*>(item.buffer) = value;
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound float param error,name:{},buffer_type:{}"sv, mIndex, mSql, name, (int)item.buffer_type);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound param out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindParams.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_setParam(size_t i, std::string_view name, double value)
+	{
+		if (i < mBindParams.size())
+		{
+			auto& item = mBindParams[i];
+			if (item.buffer_type == MYSQL_TYPE_DOUBLE)
+			{
+				*reinterpret_cast<double*>(item.buffer) = value;
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound double param error,name:{},buffer_type:{}"sv, mIndex, mSql, name, (int)item.buffer_type);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound param out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindParams.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_setParam(size_t i, std::string_view name, std::string_view value)
+	{
+		if (i < mBindParams.size())
+		{
+			auto& item = mBindParams[i];
+			if (item.buffer_type == MYSQL_TYPE_STRING ||
+				item.buffer_type == MYSQL_TYPE_VAR_STRING ||
+				item.buffer_type == MYSQL_TYPE_TINY_BLOB ||
+				item.buffer_type == MYSQL_TYPE_BLOB ||
+				item.buffer_type == MYSQL_TYPE_MEDIUM_BLOB)
+			{
 				if (item.is_null)
 				{
 					*item.is_null = value.empty();
@@ -340,66 +500,246 @@ namespace waterside
 					*item.length = len;
 				}
 			}
-			break;
-			default:
-				break;
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound string param error,name:{},buffer_type:{}"sv, mIndex, mSql, name, (int)item.buffer_type);
 			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound param out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindParams.size());
 		}
 	}
 
-	void MysqlPrepareStmt::storeResults()
+	void MysqlPrepareStmt::_getResult(size_t i, std::string_view name, int8_t& value)
 	{
-		results.clear();
-		for (const auto& item : mBindResults)
+		if (i < mBindResults.size())
 		{
+			auto& item = mBindResults[i];
+			if (item.buffer_type == MYSQL_TYPE_TINY && !item.is_unsigned)
+			{
+				value = *reinterpret_cast<int8_t*>(item.buffer);
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound int8_t result error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound result out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindResults.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_getResult(size_t i, std::string_view name, uint8_t& value)
+	{
+		if (i < mBindResults.size())
+		{
+			auto& item = mBindResults[i];
+			if (item.buffer_type == MYSQL_TYPE_TINY && item.is_unsigned)
+			{
+				value = *reinterpret_cast<uint8_t*>(item.buffer);
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound uint8_t result error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound result out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindResults.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_getResult(size_t i, std::string_view name, int16_t& value)
+	{
+		if (i < mBindResults.size())
+		{
+			auto& item = mBindResults[i];
+			if (item.buffer_type == MYSQL_TYPE_SHORT && !item.is_unsigned)
+			{
+				value = *reinterpret_cast<int16_t*>(item.buffer);
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound int16_t result error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound result out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindResults.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_getResult(size_t i, std::string_view name, uint16_t& value)
+	{
+		if (i < mBindResults.size())
+		{
+			auto& item = mBindResults[i];
+			if (item.buffer_type == MYSQL_TYPE_SHORT && item.is_unsigned)
+			{
+				value = *reinterpret_cast<uint16_t*>(item.buffer);
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound uint16_t result error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound result out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindResults.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_getResult(size_t i, std::string_view name, int32_t& value)
+	{
+		if (i < mBindResults.size())
+		{
+			auto& item = mBindResults[i];
+			if (item.buffer_type == MYSQL_TYPE_LONG && !item.is_unsigned)
+			{
+				value = *reinterpret_cast<int32_t*>(item.buffer);
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound int32_t result error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound result out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindResults.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_getResult(size_t i, std::string_view name, uint32_t& value)
+	{
+		if (i < mBindResults.size())
+		{
+			auto& item = mBindResults[i];
+			if (item.buffer_type == MYSQL_TYPE_LONG && item.is_unsigned)
+			{
+				value = *reinterpret_cast<uint32_t*>(item.buffer);
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound uint32_t result error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound result out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindResults.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_getResult(size_t i, std::string_view name, int64_t& value)
+	{
+		if (i < mBindResults.size())
+		{
+			auto& item = mBindResults[i];
+			if (item.buffer_type == MYSQL_TYPE_LONGLONG && !item.is_unsigned)
+			{
+				value = *reinterpret_cast<int64_t*>(item.buffer);
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound int64_t result error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound result out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindResults.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_getResult(size_t i, std::string_view name, uint64_t& value)
+	{
+		if (i < mBindResults.size())
+		{
+			auto& item = mBindResults[i];
+			if (item.buffer_type == MYSQL_TYPE_LONGLONG && item.is_unsigned)
+			{
+				value = *reinterpret_cast<uint64_t*>(item.buffer);
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound uint64_t result error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound result out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindResults.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_getResult(size_t i, std::string_view name, float& value)
+	{
+		if (i < mBindResults.size())
+		{
+			auto& item = mBindResults[i];
+			if (item.buffer_type == MYSQL_TYPE_FLOAT)
+			{
+				value = *reinterpret_cast<float*>(item.buffer);
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound float result error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound result out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindResults.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_getResult(size_t i, std::string_view name, double& value)
+	{
+		if (i < mBindResults.size())
+		{
+			auto& item = mBindResults[i];
+			if (item.buffer_type == MYSQL_TYPE_DOUBLE)
+			{
+				value = *reinterpret_cast<double*>(item.buffer);
+			}
+			else
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound double result error,name:{},buffer_type:{},is_unsigned:{}"sv, mIndex, mSql, name, (int)item.buffer_type, item.is_unsigned);
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound result out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindResults.size());
+		}
+	}
+
+	void MysqlPrepareStmt::_getResult(size_t i, std::string_view name, std::string_view& value)
+	{
+		if (i < mBindResults.size())
+		{
+			auto& item = mBindResults[i];
 			switch (item.buffer_type)
 			{
-			case MYSQL_TYPE_TINY:
-				if (item.is_unsigned)
-				{
-					results.emplace_back((int32_t) * reinterpret_cast<uint8_t*>(item.buffer));
-				}
-				else
-				{
-					results.emplace_back((int32_t) * reinterpret_cast<int8_t*>(item.buffer));
-				}
-				break;
-			case MYSQL_TYPE_SHORT:
-				if (item.is_unsigned)
-				{
-					results.emplace_back((int32_t) * reinterpret_cast<uint16_t*>(item.buffer));
-				}
-				else
-				{
-					results.emplace_back((int32_t) * reinterpret_cast<int16_t*>(item.buffer));
-				}
-				break;
-			case MYSQL_TYPE_LONG:
-				if (item.is_unsigned)
-				{
-					results.emplace_back((int32_t) * reinterpret_cast<uint32_t*>(item.buffer));
-				}
-				else
-				{
-					results.emplace_back(*reinterpret_cast<int32_t*>(item.buffer));
-				}
-				break;
-			case MYSQL_TYPE_LONGLONG:
-				if (item.is_unsigned)
-				{
-					results.emplace_back((int64_t) * reinterpret_cast<uint64_t*>(item.buffer));
-				}
-				else
-				{
-					results.emplace_back(*reinterpret_cast<int64_t*>(item.buffer));
-				}
-				break;
-			case MYSQL_TYPE_FLOAT:
-				results.emplace_back(*reinterpret_cast<float*>(item.buffer));
-				break;
-			case MYSQL_TYPE_DOUBLE:
-				results.emplace_back(*reinterpret_cast<double*>(item.buffer));
-				break;
 			case MYSQL_TYPE_STRING:
 			case MYSQL_TYPE_VAR_STRING:
 			case MYSQL_TYPE_TINY_BLOB:
@@ -407,16 +747,25 @@ namespace waterside
 			case MYSQL_TYPE_MEDIUM_BLOB:
 				if (item.is_null || *item.length == 0)
 				{
-					results.emplace_back(std::string_view{});
+					value = std::string_view{};
 				}
 				else
 				{
-					results.emplace_back(std::string_view{ (const char*)item.buffer, *item.length });
+					value = std::string_view{ (const char*)item.buffer, *item.length };
 				}
 				break;
 			default:
-				break;
+			{
+				assert(false);
+				MYSQL_DB_THROW("index={},sql={},mysql bound string result error,name:{},buffer_type:{}"sv, mIndex, mSql, name, (int)item.buffer_type);
 			}
+			break;
+			}
+		}
+		else
+		{
+			assert(false);
+			MYSQL_DB_THROW("index={},sql={},mysql bound result out of range,name:{},{},{}"sv, mIndex, mSql, name, i, mBindResults.size());
 		}
 	}
 
@@ -433,8 +782,8 @@ namespace waterside
 		if (mysql_stmt_prepare(mpStmt, mSql.c_str(), (unsigned long)mSql.size()))
 		{
 			uint32_t uerrno = mysql_errno(pMysql);
-			string strerror = mysql_error(pMysql);
-			string strstate = mysql_sqlstate(pMysql);
+			std::string strerror = mysql_error(pMysql);
+			std::string strstate = mysql_sqlstate(pMysql);
 
 			mysql_stmt_close(mpStmt);
 			mpStmt = nullptr;
@@ -488,8 +837,6 @@ namespace waterside
 
 	void MysqlPrepareStmt::execute()
 	{
-		boundParams();
-
 		if (0 != mysql_stmt_execute(mpStmt))
 		{
 			MYSQL_DB_THROW(mysql_stmt_errno(mpStmt), mysql_stmt_error(mpStmt), mysql_stmt_sqlstate(mpStmt), "mysql_stmt_execute fail,index={},sql={}"sv, mIndex, mSql);
@@ -518,20 +865,11 @@ namespace waterside
 		{
 			MYSQL_DB_THROW(mysql_stmt_errno(mpStmt), mysql_stmt_error(mpStmt), mysql_stmt_sqlstate(mpStmt), "mysql_stmt_fetch fail,index={},sql={}"sv, mIndex, mSql);
 		}
-
-		if (MYSQL_NO_DATA != ret)
-		{
-			storeResults();
-			return true;
-		}
-		return false;
+		return MYSQL_NO_DATA != ret;
 	}
 
 	void MysqlPrepareStmt::clear()
 	{
-		params.clear();
-		results.clear();
-
 		if (mBindResults.empty())
 		{
 			return;

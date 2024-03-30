@@ -57,7 +57,7 @@ namespace waterside
 			}
 			else
 			{
-				string_view s = "Login"sv;
+				std::string_view s = "Login"sv;
 
 				//auto xx = mpNetwork->call<testxx>(111, 100)
 				testcall().start([this](async_simple::Try<void> Result) {
@@ -102,7 +102,7 @@ namespace waterside
 		return GameConfigManager::instance().getServerId();
 	}
 
-	string_view GameServer::getServiceName() const
+	std::string_view GameServer::getServiceName() const
 	{
 		return GameConfigManager::instance().getServiceName();
 	}

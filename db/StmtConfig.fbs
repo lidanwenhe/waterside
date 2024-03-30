@@ -1,0 +1,69 @@
+enum STMT_TYPE : ubyte
+{
+	BYTE,
+	UBYTE,
+	SHORT,
+	USHORT,
+	INT,
+	UINT,
+	LONG,
+	ULONG,
+	FLOAT,
+	DOUBLE,
+	STRING,
+	VARSTRING,
+	TINYBLOB,
+	BLOB,
+	MEDIUMBLOB,
+	TIMESTAMP,
+}
+
+table StmtItem
+{
+	/// 名字
+	name : string (required);
+	/// 绑定类型
+	bind_type : STMT_TYPE;
+	/// 缓存大小。字符串才有效
+	buf_size : uint;
+	/// 允许为空。时间戳、字符串才有效
+	maybe_null : bool;
+}
+
+enum STMT_CALLBACK : ubyte
+{
+	/// 没有回调，自己实现
+	NO,
+	/// insert，update...
+	RETURN_VOID,
+	/// select 1
+	RETURN,
+	/// select n
+	RETURN_LIST,
+}
+
+table StmtConfigItem
+{
+	/// 索引
+	index : string (required);
+	/// sql语句
+	sql : string (required);
+	/// 参数
+	params : [StmtItem];
+	/// 返回值
+	results : [StmtItem];
+	/// 实现默认回调函数
+	cb : STMT_CALLBACK;
+}
+
+table StmtConfig
+{
+	/// 包名
+	package : string;
+	/// 类名
+	class_name : string (required);
+	/// 数据库生成配置
+	all : [StmtConfigItem] (required);
+}
+
+root_type StmtConfig;

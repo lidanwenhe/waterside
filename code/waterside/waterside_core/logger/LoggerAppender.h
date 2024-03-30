@@ -22,7 +22,7 @@ namespace waterside
 		{
 			mFlushEveryTime = b;
 		}
-		void setName(string_view name)
+		void setName(std::string_view name)
 		{
 			mName = name;
 		}
@@ -73,10 +73,10 @@ namespace waterside
 	private:
 		bool mEnableConsole = true;
 		bool mFlushEveryTime = false;
-		string mName;
+		std::string mName;
 		size_t mMaxFileSize = 1024 * 1024;
 		std::ofstream mFile;
-		string mFilename;
+		std::string mFilename;
 		size_t mCurrentFileSize = 0;
 		std::chrono::year_month_day mYmd;
 

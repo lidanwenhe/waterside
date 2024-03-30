@@ -25,7 +25,7 @@ namespace waterside
 			return instance;
 		}
 
-		void init(string_view name, 
+		void init(std::string_view name, 
 			LOGGER_LEVEL minLevel =
 #ifdef _DEBUG
 			LOGGER_LEVEL_TRACE,
@@ -59,7 +59,7 @@ namespace waterside
 		LOGGER_LEVEL getLoggerLevel() { return mMinLoggerlevel; }
 
 		template<typename... Args>
-		void append(const std::source_location& location, LOGGER_LEVEL level, const string_view fmt, Args&&... args)
+		void append(const std::source_location& location, LOGGER_LEVEL level, const std::string_view fmt, Args&&... args)
 		{
 			if (!checkLoggerLevel(level))
 				return;

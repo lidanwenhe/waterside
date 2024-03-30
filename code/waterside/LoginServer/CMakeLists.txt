@@ -12,7 +12,10 @@ include_directories(
 	../waterside_core/frame
 	../waterside_route
 	../waterside_mysql
+	../fbs
 	.
+	./dispatch
+	./mysql
 	)
 
 file(GLOB_RECURSE ALL_FILES *.h *.cpp)

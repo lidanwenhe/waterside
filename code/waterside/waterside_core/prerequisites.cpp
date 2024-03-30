@@ -2,7 +2,7 @@
 
 namespace waterside
 {
-	std::size_t case_insensitive_string_hash::operator()(string_view str) const
+	std::size_t case_insensitive_string_hash::operator()(std::string_view str) const
 	{
 		// BKDR Hash
 		size_t hash = 0;
@@ -13,7 +13,7 @@ namespace waterside
 		return hash;
 	}
 
-	bool case_insensitive_string_equal_to::operator()(string_view lhs, string_view rhs) const
+	bool case_insensitive_string_equal_to::operator()(std::string_view lhs, std::string_view rhs) const
 	{
 		size_t n = lhs.size();
 		if (n != rhs.size())

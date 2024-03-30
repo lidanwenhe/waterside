@@ -31,7 +31,7 @@ namespace waterside
 			return config()->server_id();
 		}
 
-		string_view getServiceName() const
+		std::string_view getServiceName() const
 		{
 			return config()->service_name()->string_view();
 		}

@@ -171,6 +171,6 @@ namespace waterside
 			}
 		}
 	private:
-		vector<std::shared_ptr<TMultiSignalSlot<Args...>>> mSlots;
+		std::vector<std::shared_ptr<TMultiSignalSlot<Args...>>> mSlots;
 	};
 }

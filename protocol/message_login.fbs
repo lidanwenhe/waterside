@@ -1,0 +1,24 @@
+/// 账号登录
+table AccountLogin
+{
+	/// 账号
+	account : string (required);
+}
+
+/// 登录错误码
+enum LOGIN_ERROR_CODE : uint
+{
+	/// 成功
+	SUCCESS,
+	/// 失败
+	FAILED,
+}
+
+/// 账号登录回复
+table AccountLoginReply
+{
+	/// 登录错误码
+	errcode : LOGIN_ERROR_CODE;
+	/// 用户ID
+	userid : int;
+}

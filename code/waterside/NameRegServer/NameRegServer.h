@@ -23,7 +23,7 @@ namespace waterside
 		virtual void runonce(float deltaTime, double currentTime) override;
 
 		virtual int32_t getServerId() const override;
-		virtual string_view getServiceName() const override;
+		virtual std::string_view getServiceName() const override;
 		virtual float getLogicFps() override;
 		virtual float getLogicFpsWarning() override;
 		virtual uint16_t getNetListenPort() override;

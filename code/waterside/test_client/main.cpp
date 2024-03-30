@@ -1,11 +1,13 @@
 #include "TcpNetwork.h"
 #include "async_simple/coro/SyncAwait.h"
+#include "message_id_generated.h"
+#include "message_login_generated.h"
 
 using boost::asio::ip::tcp;
 
 
 int testaa(int a, int b);
-void testfb(const waterside::RpcPacketConnectReply* fb);
+//void testfb(const waterside::RpcPacketConnectReply* fb);
 
 async_simple::coro::Lazy<void> test_rpc_call(waterside::TcpNetwork& net, waterside::SessionID sessionId)
 {
@@ -17,13 +19,14 @@ async_simple::coro::Lazy<void> test_rpc_call(waterside::TcpNetwork& net, watersi
         std::cout << "xxxxxx:" << xx << "\n\n";
     }
 
-    flatbuffers::FlatBufferBuilder fbb;
-    auto root = waterside::CreateRpcPacketConnectReplyDirect(fbb,
-        "bForceDisconnet", 222);
+    /*flatbuffers::FlatBufferBuilder fbb;
+    auto root = waterside::CreateAccountLoginDirect(fbb,
+        "lidan");
     fbb.Finish(root);
 
-    co_await net.call<testfb>(sessionId, &fbb);
+    co_await net.call<testfb>(sessionId, &fbb);*/
 }
+
 
 int main(int argc, char *argv[]) {
     try {
@@ -35,7 +38,7 @@ int main(int argc, char *argv[]) {
                 std::cout << "task completed successfully.\n";
             });
 
-        net.connect("127.0.0.1", "9980").start([&net](async_simple::Try<std::pair<boost::system::error_code, waterside::SessionID>> Result) {
+        net.connect("127.0.0.1", "8001").start([&net](async_simple::Try<std::pair<boost::system::error_code, waterside::SessionID>> Result) {
             if (Result.hasError())
             {
                 std::exception_ptr error = Result.getException();
@@ -44,14 +47,18 @@ int main(int argc, char *argv[]) {
             else
             {
                 std::cout << "task completed successfully.\n";
-                auto [ec, sesionId] = Result.value();
+                auto [ec, sessionId] = Result.value();
                 if (ec)
                 {
                     //
                 }
                 else
                 {
-                    test_rpc_call(net, sesionId).start([](async_simple::Try<void> Result) {
+                    AccountLoginT obj;
+                    obj.account = "lidan";
+                    net.send(sessionId, MESSAGE_ID_ACCOUNT_LOGIN, obj);
+
+                   /** test_rpc_call(net, sessionId).start([](async_simple::Try<void> Result) {
                         if (Result.hasError())
                         {
                             std::exception_ptr error = Result.getException();
@@ -60,7 +67,7 @@ int main(int argc, char *argv[]) {
                         }
                         else
                             std::cout << "task completed successfully.\n";
-                        });
+                        });*/
                 }
             }
             });

@@ -4,7 +4,7 @@
 
 namespace waterside
 {
-	class MysqlSession final
+	class MysqlSession final : private boost::noncopyable
 	{
 	public:
 		MysqlSession();
@@ -19,12 +19,18 @@ namespace waterside
 
 		void clear();
 
-		void registerStmt(int32_t index, std::string_view sql, const vector<MysqlStmtBindArgs>& vParams, const vector<MysqlStmtBindArgs>& vResults);
+		void registerStmt(std::unique_ptr<MysqlPrepareStmt>&& pstmt);
 
-		MysqlPrepareStmt* findStmt(int32_t index);
-		
+		MysqlPrepareStmt* findStmt(uint32_t index);
 
-		class lock_guard final
+		template<typename T>
+		  	requires std::is_base_of_v<MysqlPrepareStmt, T> && std::is_enum_v<decltype(T::ID)>
+		T* findStmt()
+		{
+			return static_cast<T*>(findStmt(T::ID));
+		}
+
+		class lock_guard final : private boost::noncopyable
 		{
 		public:
 			lock_guard(MysqlSession& db)
@@ -53,15 +59,15 @@ namespace waterside
 		void close();
 
 	private:
-		string mUser;
-		string mPassword;
-		string mHost;
+		std::string mUser;
+		std::string mPassword;
+		std::string mHost;
 		uint16_t mPort;
-		string mDB;
+		std::string mDB;
 
 		MYSQL* mpMysql;
 
-		std::unordered_map<int32_t, MysqlPrepareStmt> mStmt;
+		std::vector<std::unique_ptr<MysqlPrepareStmt>> mStmt;
 		MysqlPrepareStmt* mpCurStmt;
 	};
 }

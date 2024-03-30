@@ -1,9 +1,8 @@
 #pragma once
 
-#include "SessionBase.h"
+#include "NetworkDispatcherManager.h"
 #include "SessionIdManager.h"
 #include "ObjectManager.h"
-#include "Logger.h"
 #include "tbb/concurrent_queue.h"
 #include "async_simple/coro/FutureAwaiter.h"
 #include "ylt/struct_pack.hpp"
@@ -22,6 +21,30 @@ namespace waterside
 		void onProcessPacket();
 
 		std::function<void(SessionID)> onDisconnectCallback;
+
+		bool registerDispatcher(NetworkDispatcher* pDispatcher)
+		{
+			return mNetworkDispatcherManager.registerDispatcher(pDispatcher);
+		}
+		bool registerDispatcher(CoroNetworkDispatcher* pDispatcher)
+		{
+			return mNetworkDispatcherManager.registerDispatcher(pDispatcher);
+		}
+
+		bool send(SessionID sessionId, uint32_t id, const std::pair<const void*, size_t>& body);
+		bool send(SessionID sessionId, uint32_t id, flatbuffers::FlatBufferBuilder& fbb)
+		{
+			const std::pair<const void*, size_t> body{ fbb.GetBufferPointer(), fbb.GetSize() };
+			return send(sessionId, id, body);
+		}
+		template<typename T>
+		bool send(SessionID sessionId, uint32_t id, const T& obj)
+		{
+			using TableType = typename T::TableType;
+			flatbuffers::FlatBufferBuilder fbb;
+			fbb.Finish(TableType::Pack(fbb, &obj));
+			return send(sessionId, id, fbb);
+		}
 
 		template <auto func>
 		void registHandler()
@@ -128,7 +151,7 @@ namespace waterside
 
 		void addSession(std::shared_ptr<SessionBase> pSession);
 
-		string_view getFunctionName(uint32_t key);
+		std::string_view getFunctionName(uint32_t key);
 
 		template <auto func, typename objid, typename... Args>
 		void static_check_member()
@@ -265,10 +288,10 @@ namespace waterside
 		}
 
 
-		using DispatchHandler = std::function<std::optional<vector<char>>(
+		using DispatchHandler = std::function<std::optional<std::vector<char>>(
 			std::shared_ptr<NetworkContext>& pContext)>;
 
-		using CoroDispatchHandler = std::function<async_simple::coro::Lazy<std::optional<vector<char>>>(
+		using CoroDispatchHandler = std::function<async_simple::coro::Lazy<std::optional<std::vector<char>>>(
 			std::shared_ptr<NetworkContext>& pContext)>;
 
 		template <typename T>
@@ -460,7 +483,7 @@ namespace waterside
 		}
 
 		template<auto func>
-		std::optional<vector<char>> netDispatcher(std::shared_ptr<NetworkContext>& pContext)
+		std::optional<std::vector<char>> netDispatcher(std::shared_ptr<NetworkContext>& pContext)
 		{
 			using Function = decltype(func);
 			using param_type = coro_rpc::function_parameters_t<Function>;
@@ -636,11 +659,11 @@ namespace waterside
 					}
 				}
 			}
-			return vector<char>{};
+			return std::vector<char>{};
 		}
 
 		template<auto func>
-		async_simple::coro::Lazy<std::optional<vector<char>>> coroNetDispatcher(std::shared_ptr<NetworkContext>& pContext)
+		async_simple::coro::Lazy<std::optional<std::vector<char>>> coroNetDispatcher(std::shared_ptr<NetworkContext>& pContext)
 		{
 			using Function = decltype(func);
 			using param_type = coro_rpc::function_parameters_t<Function>;
@@ -816,7 +839,7 @@ namespace waterside
 					}
 				}
 			}
-			co_return vector<char>{};
+			co_return std::vector<char>{};
 		}
 
 		DispatchHandler* getDispatchHandler(uint32_t funcid);
@@ -835,14 +858,16 @@ namespace waterside
 
 		tbb::concurrent_queue<std::shared_ptr<NetworkContext>> mProcessPackets;
 		
-		unordered_map<uint32_t, DispatchHandler> mDispatchHandlers;
-		unordered_map<uint32_t, CoroDispatchHandler> mCoroDispatchHandlers;
-		unordered_map<uint32_t, string> mFuncId2Name;
+		std::unordered_map<uint32_t, DispatchHandler> mDispatchHandlers;
+		std::unordered_map<uint32_t, CoroDispatchHandler> mCoroDispatchHandlers;
+		std::unordered_map<uint32_t, std::string> mFuncId2Name;
+
+		NetworkDispatcherManager mNetworkDispatcherManager;
 
 		struct PromiseInfo
 		{
-			async_simple::Promise<std::optional<vector<char>>> promise;
+			async_simple::Promise<std::optional<std::vector<char>>> promise;
 		};
-		unordered_map<uint32_t, std::shared_ptr<PromiseInfo>> mPromises;
+		std::unordered_map<uint32_t, std::shared_ptr<PromiseInfo>> mPromises;
 	};
 }

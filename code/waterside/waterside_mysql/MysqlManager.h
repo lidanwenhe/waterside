@@ -11,13 +11,13 @@ namespace waterside
 	struct MysqlContext
 	{
 		RpcPacketHeader header;
-		vector<char> body;
+		std::vector<char> body;
 	};
 
-	class MysqlManager
+	class MysqlManager : private boost::noncopyable
 	{
 	public:
-		MysqlManager(string_view url, uint32_t multithreading, uint32_t reconnectDelaySecond);
+		MysqlManager(std::string_view url, uint32_t multithreading, uint32_t reconnectDelaySecond);
 
 		virtual ~MysqlManager() = default;
 
@@ -105,10 +105,10 @@ namespace waterside
 			return ++mSeqNum;
 		}
 
-		string_view getFunctionName(uint32_t key);
+		std::string_view getFunctionName(uint32_t key);
 
 
-		using DispatchHandler = std::function<std::optional<vector<char>>(
+		using DispatchHandler = std::function<std::optional<std::vector<char>>(
 			MysqlSession* pSession, std::shared_ptr<MysqlContext>& pContext)>;
 
 		template <typename Function>
@@ -209,7 +209,7 @@ namespace waterside
 		}
 
 		template<auto func>
-		std::optional<vector<char>> mysqlDispatcher(MysqlSession* pSession, std::shared_ptr<MysqlContext>& pContext)
+		std::optional<std::vector<char>> mysqlDispatcher(MysqlSession* pSession, std::shared_ptr<MysqlContext>& pContext)
 		{
 			using Function = decltype(func);
 			using param_type = coro_rpc::function_parameters_t<Function>;
@@ -228,13 +228,14 @@ namespace waterside
 
 				if constexpr (bMemberFunction)
 				{
+					using Self = coro_rpc::class_type_t<Function>;
 					if constexpr (std::is_void_v<return_type>)
 					{
 						// call void o.func(pSession, args...)
 						std::apply(func,
 							std::tuple_cat(
 								std::forward_as_tuple(
-									*this,
+									*static_cast<Self*>(this),
 									pSession
 								),
 								std::move(args))
@@ -246,7 +247,7 @@ namespace waterside
 							std::apply(func,
 								std::tuple_cat(
 									std::forward_as_tuple(
-										*this,
+										*static_cast<Self*>(this),
 										pSession
 									),
 									std::move(args))
@@ -284,14 +285,15 @@ namespace waterside
 			{
 				if constexpr (bMemberFunction)
 				{
+					using Self = coro_rpc::class_type_t<Function>;
 					if constexpr (std::is_void_v<return_type>)
 					{// call void o.func()
-						(this->*func)();
+						(static_cast<Self*>(this)->*func)();
 					}
 					else
 					{// call return_type o.func()
 						return struct_pack::serialize(
-							(this->*func)()
+							(static_cast<Self*>(this)->*func)()
 						);
 					}
 				}
@@ -322,12 +324,12 @@ namespace waterside
 
 		void reconnect(MysqlSession* pSession);
 
-		std::shared_ptr<MysqlSession> getMysqlSession();
+		MysqlSession* getMysqlSession();
 
 		void onDispatch(MysqlSession* pSession, std::shared_ptr<MysqlContext> pContext);
 
 	private:
-		string mUrl; // mysql://user:pwd@host:port/db
+		std::string mUrl; // mysql://user:pwd@host:port/db
 		uint32_t mReconnectDelaySecond = 10; // 重连延迟时间
 
 		IoContextPool mPool;
@@ -335,20 +337,20 @@ namespace waterside
 
 		std::mutex mMutex;
 		size_t mNextMysqlSession = 0;
-		vector<std::shared_ptr<MysqlSession>> mpMysqlSessions;
+		std::vector<std::shared_ptr<MysqlSession>> mpMysqlSessions;
 
 
 		uint32_t mSeqNum = 0;
 
 		tbb::concurrent_queue<std::shared_ptr<MysqlContext>> mProcessPackets;
 
-		unordered_map<uint32_t, DispatchHandler> mDispatchHandlers;
-		unordered_map<uint32_t, string> mFuncId2Name;
+		std::unordered_map<uint32_t, DispatchHandler> mDispatchHandlers;
+		std::unordered_map<uint32_t, std::string> mFuncId2Name;
 
 		struct PromiseInfo
 		{
-			async_simple::Promise<std::optional<vector<char>>> promise;
+			async_simple::Promise<std::optional<std::vector<char>>> promise;
 		};
-		unordered_map<uint32_t, std::shared_ptr<PromiseInfo>> mPromises;
+		std::unordered_map<uint32_t, std::shared_ptr<PromiseInfo>> mPromises;
 	};
 }

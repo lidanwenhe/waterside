@@ -1,0 +1,13 @@
+{
+  "server_id": 4,
+  "service_name": "Gate",
+  "logic_fps": 30,
+  "logic_fps_warning": 20,
+  "network": {
+    "ip": "127.0.0.1",
+    "port": 8003,
+    "multi_threading": 0
+  },
+  "namereg_ip": "127.0.0.1",
+  "namereg_port": "8000"
+}

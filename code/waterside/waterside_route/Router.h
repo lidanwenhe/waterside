@@ -6,8 +6,8 @@
 
 namespace waterside
 {
-	bool onNameRegInfo(const NetworkContext& ctx, string_view serviceName, string_view ip, string_view port, int32_t serverId);
-	std::tuple<string, string, int32_t> onFindNameRegInfoByServiceName(string_view serviceName);
+	bool onNameRegInfo(const NetworkContext& ctx, std::string_view serviceName, std::string_view ip, std::string_view port, int32_t serverId);
+	std::tuple<std::string, std::string, int32_t> onFindNameRegInfoByServiceName(std::string_view serviceName);
 
 	class Router : public RouteBase, public TLazySingleton<Router>
 	{
@@ -16,8 +16,8 @@ namespace waterside
 
 		~Router() = default;
 
-		void initialize(std::shared_ptr<TcpNetwork> pNetwork, string_view serviceName, string_view ip, string_view port,
-			string_view nameRegIp, string_view nameRegPort, int32_t serverId)
+		void initialize(std::shared_ptr<TcpNetwork> pNetwork, std::string_view serviceName, std::string_view ip, std::string_view port,
+			std::string_view nameRegIp, std::string_view nameRegPort, int32_t serverId)
 		{
 			mpNetwork = pNetwork;
 			mServiceName = serviceName;
@@ -32,7 +32,7 @@ namespace waterside
 
 		template <auto func, typename... Args>
 		async_simple::coro::Lazy<std::optional<decltype(getReturnType<func>())>>
-			call(string_view serviceName, Args... args)
+			call(std::string_view serviceName, Args... args)
 		{
 			auto pInfo = findRouteInfoByServiceName(serviceName);
 			if (pInfo)
@@ -80,11 +80,11 @@ namespace waterside
 
 	private:
 		std::shared_ptr<TcpNetwork> mpNetwork;
-		string mServiceName;
-		string mIp;
-		string mPort;
-		string mNameRegIp;
-		string mNameRegPort;
+		std::string mServiceName;
+		std::string mIp;
+		std::string mPort;
+		std::string mNameRegIp;
+		std::string mNameRegPort;
 		SessionID mNameRegSessionId = 0;
 		int32_t mServerId = 0;
 	};

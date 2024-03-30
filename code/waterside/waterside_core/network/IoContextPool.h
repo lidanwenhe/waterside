@@ -61,9 +61,9 @@ namespace waterside
         volatile bool mbStopped;
         std::size_t mPoolSize;
 
-        vector<io_context_ptr> mIoContexts;
-        vector<std::unique_ptr<AsioExecutor>> mExecutors;
-        vector<work_ptr> mWork;
+        std::vector<io_context_ptr> mIoContexts;
+        std::vector<std::unique_ptr<AsioExecutor>> mExecutors;
+        std::vector<work_ptr> mWork;
         std::atomic<std::size_t> mNextIoContext;
 	};
 
@@ -199,7 +199,7 @@ namespace waterside
 
     inline async_simple::coro::Lazy<boost::system::error_code> async_connect(
         boost::asio::io_context& io_context, boost::asio::ip::tcp::socket& socket,
-        const string& host, const string& port) noexcept {
+        const std::string& host, const std::string& port) noexcept {
         co_return co_await AsioCallbackAwaiter<boost::system::error_code>{
             [&](std::coroutine_handle<> handle, auto set_resume_value) mutable {
                 boost::asio::ip::tcp::resolver resolver(io_context);

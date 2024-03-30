@@ -49,6 +49,6 @@ namespace waterside
 			return nullptr;
 		}
 	private:
-		unordered_map<unique_id, std::shared_ptr<ObjectBase>> mObjects;
+		std::unordered_map<unique_id, std::shared_ptr<ObjectBase>> mObjects;
 	};
 }

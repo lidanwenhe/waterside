@@ -4,7 +4,7 @@
   "logic_fps": 30,
   "logic_fps_warning": 20,
   "login_db": {
-    "url": "mysql://root:12345678@localhost/rpg_game",
+    "url": "mysql://root:12345678@localhost/waterside_login",
     "multi_threading": 1,
     "reconnect_delay_second": 10
   },
